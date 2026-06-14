@@ -57,7 +57,7 @@ export function propagateTLEToGeodetic(line1: string, line2: string, date: Date)
     const positionGd = satellite.eciToGeodetic(pos as satellite.EciVec3<number>, gmst);
     
     let longitude = satellite.degreesLong(positionGd.longitude);
-    let latitude = satellite.degreesLat(positionGd.latitude);
+    const latitude = satellite.degreesLat(positionGd.latitude);
     
     // Normalize longitude to -180 to 180 range
     if (longitude > 180) longitude -= 360;

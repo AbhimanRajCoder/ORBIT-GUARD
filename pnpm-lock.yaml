@@ -42,8 +42,8 @@ importers:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react-is@16.13.1)(react@19.2.4)(redux@5.0.1)
       satellite.js:
-        specifier: ^7.0.1
-        version: 7.0.1
+        specifier: ^4.1.4
+        version: 4.1.4
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -2483,8 +2483,8 @@ packages:
     resolution: {integrity: sha512-x/+Cz4YrimQxQccJf5mKEbIa1NzeCRNI5Ecl/ekmlYaampdNLPalVyIcCZNNH3MvmqBugV5TMYZXv0ljslUlaw==}
     engines: {node: '>= 0.4'}
 
-  satellite.js@7.0.1:
-    resolution: {integrity: sha512-43hMdoom4miUvwX7FkroaHGq4JHIFQRNcUx570xD9KkZjsVssoWxHp8uk6KwDm+lmrW6GTuP2+G4PwvtHfr62A==}
+  satellite.js@4.1.4:
+    resolution: {integrity: sha512-OGUrs1GoGKjy9FYbW2ZaM5slaPfJaYrcxjE3YQTeR/OGyFPCxb6HK22Chao55POU06pdmNAdW5rtKJURse0+XA==}
 
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
@@ -5289,7 +5289,7 @@ snapshots:
       es-errors: 1.3.0
       is-regex: 1.2.1
 
-  satellite.js@7.0.1: {}
+  satellite.js@4.1.4: {}
 
   scheduler@0.27.0: {}
 
