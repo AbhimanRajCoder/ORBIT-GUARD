@@ -3,7 +3,7 @@
 <div align="center">
 
 ![OrbitGuard Banner](https://img.shields.io/badge/OrbitGuard-v2.0-7c3aed?style=for-the-badge&logo=satellite&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-16.2-black?style=for-the-badge&logo=nextdotjs)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=nextdotjs)
 ![Three.js](https://img.shields.io/badge/Three.js-0.184-049ef4?style=for-the-badge&logo=threedotjs)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=for-the-badge&logo=typescript)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
@@ -72,7 +72,7 @@ Every calculation in this system is backed by **peer-reviewed astrodynamics form
 
 | Layer | Technology |
 |---|---|
-| **Framework** | Next.js 16.2 (App Router, React Server Components) |
+| **Framework** | Next.js 15 (App Router, React Server Components) |
 | **Language** | TypeScript 5 (strict mode) |
 | **3D Engine** | Three.js 0.184 + OrbitControls |
 | **Orbital Math** | `satellite.js` 7.0 (SGP4/SDP4 propagator) |
@@ -189,10 +189,10 @@ Implementation: [`propagateTLE()`](./src/lib/sgp4-propagator.ts#L16) and [`propa
 **Orbital Period (Kepler's Third Law):**
 
 ```
-         _________
-        /   a³
-T = 2π √  ────     [seconds]
-           GM
+        ________
+       /  a³
+T = 2π √ ────     [seconds]
+          GM
 ```
 
 Where:
@@ -206,10 +206,10 @@ Converted to minutes: `T_min = T_sec / 60`
 **Circular Orbital Velocity (Vis-viva equation for circular orbit):**
 
 ```
-        ___
-       / GM
-v = √ ────     [km/s]
-        a
+       ____
+      / GM
+v = √ ───     [km/s]
+       a
 ```
 
 **Example:** At 550 km → v ≈ 7.60 km/s (27,360 km/h)
@@ -292,9 +292,9 @@ d_M² = [x_p, y_p] · C_e⁻¹ · [x_p, y_p]ᵀ
 #### Step 5 — Akella-Alfriend Pc Formula
 
 ```
-         R²          ⎛   1      ⎞
-Pc = ──────────── · exp⎜ - ─ d_M² ⎟
-     2√(det(C_e))    ⎝   2      ⎠
+        R²                  ⎛  1      ⎞
+Pc = ────────────── · exp  ⎜- ─ d_M²⎟
+     2√(det(C_e))           ⎝  2      ⎠
 ```
 
 Where:
@@ -318,9 +318,9 @@ Implementation: [`estimateCollisionProbability()`](./src/lib/orbital-physics.ts#
 The **Tsiolkovsky Rocket Equation** (1903) gives the propellant mass required to achieve a velocity change ΔV:
 
 ```
-                ⎛       ΔV      ⎞
-m_prop = m₀ · ⎜1 - exp(- ─────)⎟
-                ⎝      Isp · g₀ ⎠
+                ⎛        ΔV    ⎞
+m_prop = m₀ · ⎜1 - exp(────)⎟
+                ⎝      Isp·g₀  ⎠
 ```
 
 Where:
@@ -338,8 +338,8 @@ m₀ = 500 kg
 Isp = 220 s
 
 m_prop = 500 × (1 - exp(-0.35 / (220 × 9.80665)))
-       = 500 × (1 - exp(-0.0001623))
-       = 500 × 0.0001623
+       = 500 × (1 - exp(-0.0001622))
+       = 500 × 0.0001622
        ≈ 0.081 kg  (81 grams of fuel)
 ```
 
@@ -387,14 +387,12 @@ Where `Δt` = time from burn to Time of Closest Approach (TCA) in seconds.
 
 **Total 3D displacement from burn:**
 ```
-                 ___________________
 |Δr⃗| = √(x² + y² + z²)     [meters]
 ```
 
 **New miss distance (root-sum-square combination):**
 ```
-                      ___________________________________
-d_new = √(d_current² + (|Δr⃗|/1000)²)     [km]
+d_new = √(d_current² + (|Δr⃗| / 1000)²)     [km]
 ```
 
 **Burn direction mapping:**
@@ -473,7 +471,7 @@ void main() {
 
 **Shell point generation formula:**
 ```
-radius = Rₑ + altitude_km / 6378.137 × Rₑ    (in Three.js scene units)
+radius = (Rₑ + altitude_km) / 6378.137        (in Three.js scene units, normalized to Earth radii)
 θ = random × 2π                                (longitude)
 φ = π/2 + inclination_spread × (random - 0.5) (colatitude ± spread)
 
