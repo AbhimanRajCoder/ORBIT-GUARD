@@ -98,7 +98,9 @@ export async function fetchCelesTrakCatalogs(limit: number = 50): Promise<{
     // 1. Fetch Active Satellite TLEs
     // Using a direct fetch to the catalog text files
     const activeRes = await fetch("https://celestrak.org/pub/TLE/catalog/active.txt", {
-      next: { revalidate: 7200 } // cache at next.js level
+      next: { revalidate: 7200 }, // cache at next.js level
+      signal: AbortSignal.timeout(5000),
+      headers: { "User-Agent": "OrbitGuard-App/2.0" }
     });
     let activeText = "";
     if (activeRes.ok) {
@@ -109,7 +111,9 @@ export async function fetchCelesTrakCatalogs(limit: number = 50): Promise<{
 
     // 2. Fetch Debris TLEs
     const debrisRes = await fetch("https://celestrak.org/pub/TLE/catalog/debris.txt", {
-      next: { revalidate: 7200 }
+      next: { revalidate: 7200 },
+      signal: AbortSignal.timeout(5000),
+      headers: { "User-Agent": "OrbitGuard-App/2.0" }
     });
     let debrisText = "";
     if (debrisRes.ok) {
