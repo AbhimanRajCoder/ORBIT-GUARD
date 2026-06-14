@@ -1,4 +1,4 @@
-# 🛰️ OrbitGuard — Real-Time Spacecraft Collision Avoidance System
+# OrbitGuard — Real-Time Spacecraft Collision Avoidance System
 
 <div align="center">
 
@@ -166,19 +166,15 @@ Line 2: 2 NNNNN NNN.NNNN NNN.NNNN NNNNNNN NNN.NNNN NNN.NNNN NN.NNNNNNNNNNNNNN
 
 **SGP4 output** — ECI (Earth-Centered Inertial) state vector:
 
-```
-r⃗(t) = [x, y, z]    (km)
-v⃗(t) = [ẋ, ẏ, ż]    (km/s)
-```
+$$\vec{r}(t) = [x,\ y,\ z] \quad \text{(km)}$$
+$$\vec{v}(t) = [\dot{x},\ \dot{y},\ \dot{z}] \quad \text{(km/s)}$$
 
 **Coordinate conversion ECI → Geodetic:**
 
-```
-GMST(t) = Greenwich Mean Sidereal Time at time t
-λ = atan2(y, x) - GMST          (longitude)
-φ = atan2(z, √(x² + y²))        (geocentric latitude)
-h = |r⃗| - Rₑ                   (altitude)
-```
+$$\text{GMST}(t) = \text{Greenwich Mean Sidereal Time at time } t$$
+$$\lambda = \text{atan2}(y,\ x) - \text{GMST} \quad \text{(longitude)}$$
+$$\phi = \text{atan2}\!\left(z,\ \sqrt{x^2 + y^2}\right) \quad \text{(geocentric latitude)}$$
+$$h = |\vec{r}| - R_e \quad \text{(altitude)}$$
 
 Implementation: [`propagateTLE()`](./src/lib/sgp4-propagator.ts#L16) and [`propagateTLEToGeodetic()`](./src/lib/sgp4-propagator.ts#L43)
 
@@ -188,12 +184,7 @@ Implementation: [`propagateTLE()`](./src/lib/sgp4-propagator.ts#L16) and [`propa
 
 **Orbital Period (Kepler's Third Law):**
 
-```
-        ________
-       /  a³
-T = 2π √ ────     [seconds]
-          GM
-```
+$$T = 2\pi \sqrt{\frac{a^3}{GM}} \quad \text{[seconds]}$$
 
 Where:
 - `a = Rₑ + h` = semi-major axis (km)
@@ -205,12 +196,7 @@ Converted to minutes: `T_min = T_sec / 60`
 
 **Circular Orbital Velocity (Vis-viva equation for circular orbit):**
 
-```
-       ____
-      / GM
-v = √ ───     [km/s]
-       a
-```
+$$v = \sqrt{\frac{GM}{a}} \quad \text{[km/s]}$$
 
 **Example:** At 550 km → v ≈ 7.60 km/s (27,360 km/h)
 
@@ -224,22 +210,18 @@ This is the core safety computation. OrbitGuard implements the **Akella-Alfriend
 
 #### Step 1 — Relative State
 
-```
-Δr⃗ = r⃗_A - r⃗_B     (relative position, km)
-Δv⃗ = v⃗_A - v⃗_B     (relative velocity, km/s)
-```
+$$\Delta\vec{r} = \vec{r}_A - \vec{r}_B \quad \text{(relative position, km)}$$
+$$\Delta\vec{v} = \vec{v}_A - \vec{v}_B \quad \text{(relative velocity, km/s)}$$
 
 #### Step 2 — Encounter Reference Frame
 
 The collision plane is defined perpendicular to the relative velocity vector:
 
-```
-ê_z = Δv⃗ / |Δv⃗|                           (along relative velocity)
+$$\hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|} \quad \text{(along relative velocity)}$$
 
-ê_x = (Δr⃗ × Δv⃗) / |Δr⃗ × Δv⃗|             (perpendicular, in orbit plane)
+$$\hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|} \quad \text{(perpendicular, in orbit plane)}$$
 
-ê_y = ê_z × ê_x                           (completes right-handed frame)
-```
+$$\hat{e}_y = \hat{e}_z \times \hat{e}_x \quad \text{(completes right-handed frame)}$$
 
 #### Step 3 — Covariance Rotation (RTN → ECI)
 
@@ -251,51 +233,40 @@ Secondary (B):  σ_R = 0.5 km,  σ_T = 2.0 km,  σ_N = 0.5 km
 ```
 
 RTN unit vectors:
-```
-û_R = r⃗ / |r⃗|                             (radial: outward)
-û_N = (r⃗ × v⃗) / |r⃗ × v⃗|                  (normal: angular momentum)
-û_T = û_N × û_R                            (transverse: along-track)
-```
+
+$$\hat{u}_R = \frac{\vec{r}}{|\vec{r}|} \quad \text{(radial: outward)}$$
+
+$$\hat{u}_N = \frac{\vec{r} \times \vec{v}}{|\vec{r} \times \vec{v}|} \quad \text{(normal: angular momentum)}$$
+
+$$\hat{u}_T = \hat{u}_N \times \hat{u}_R \quad \text{(transverse: along-track)}$$
 
 ECI covariance matrix (3×3):
-```
-C_ECI = σ_R² (û_R ⊗ û_R) + σ_T² (û_T ⊗ û_T) + σ_N² (û_N ⊗ û_N)
-```
+
+$$C_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)$$
 
 Combined covariance:
-```
-C_combined = C_A + C_B
-```
+
+$$C_{\text{combined}} = C_A + C_B$$
 
 #### Step 4 — Project to 2D Encounter Plane
 
-```
-C_e = | C_e00  C_e01 |
-      | C_e01  C_e11 |
+$$C_e = \begin{pmatrix} C_{e00} & C_{e01} \\ C_{e01} & C_{e11} \end{pmatrix}$$
 
-where: C_e00 = ê_x · C_combined · ê_x
-       C_e01 = ê_x · C_combined · ê_y
-       C_e11 = ê_y · C_combined · ê_y
-```
+where:
+
+$$C_{e00} = \hat{e}_x \cdot C_{\text{combined}} \cdot \hat{e}_x, \quad C_{e01} = \hat{e}_x \cdot C_{\text{combined}} \cdot \hat{e}_y, \quad C_{e11} = \hat{e}_y \cdot C_{\text{combined}} \cdot \hat{e}_y$$
 
 Projected miss distance on encounter plane:
-```
-x_p = Δr⃗ · ê_x
-y_p = Δr⃗ · ê_y
-```
+
+$$x_p = \Delta\vec{r} \cdot \hat{e}_x, \qquad y_p = \Delta\vec{r} \cdot \hat{e}_y$$
 
 Mahalanobis distance squared:
-```
-d_M² = [x_p, y_p] · C_e⁻¹ · [x_p, y_p]ᵀ
-```
+
+$$d_M^2 = \begin{bmatrix} x_p & y_p \end{bmatrix} C_e^{-1} \begin{bmatrix} x_p \\ y_p \end{bmatrix}$$
 
 #### Step 5 — Akella-Alfriend Pc Formula
 
-```
-        R²                  ⎛  1      ⎞
-Pc = ────────────── · exp  ⎜- ─ d_M²⎟
-     2√(det(C_e))           ⎝  2      ⎠
-```
+$$P_c = \frac{R^2}{2\sqrt{\det(C_e)}} \cdot \exp\!\left(-\frac{1}{2}\, d_M^2\right)$$
 
 Where:
 - `R` = combined hard-body radius (primary + secondary, in km) — default 15 m
@@ -317,11 +288,7 @@ Implementation: [`estimateCollisionProbability()`](./src/lib/orbital-physics.ts#
 
 The **Tsiolkovsky Rocket Equation** (1903) gives the propellant mass required to achieve a velocity change ΔV:
 
-```
-                ⎛        ΔV    ⎞
-m_prop = m₀ · ⎜1 - exp(────)⎟
-                ⎝      Isp·g₀  ⎠
-```
+$$m_{\text{prop}} = m_0 \cdot \left(1 - \exp\!\left(\frac{-\Delta V}{I_{sp} \cdot g_0}\right)\right)$$
 
 Where:
 - `m₀` = wet mass of satellite (kg) — default 500 kg
@@ -344,14 +311,12 @@ m_prop = 500 × (1 - exp(-0.35 / (220 × 9.80665)))
 ```
 
 **Exhaust velocity:**
-```
-v_e = Isp × g₀ = 220 × 9.80665 ≈ 2157 m/s
-```
+
+$$v_e = I_{sp} \times g_0 = 220 \times 9.80665 \approx 2157 \ \text{m/s}$$
 
 **Tsiolkovsky Mass Ratio Curve** (shown in Maneuvers page chart):
-```
-m_prop/m₀ = 1 - exp(-ΔV / v_e)
-```
+
+$$\frac{m_{\text{prop}}}{m_0} = 1 - \exp\!\left(\frac{-\Delta V}{v_e}\right)$$
 
 Implementation: [`calculateFuelCost()`](./src/lib/orbital-physics.ts#L190)
 
@@ -362,11 +327,8 @@ Implementation: [`calculateFuelCost()`](./src/lib/orbital-physics.ts#L190)
 The **Clohessy-Wiltshire (CW) equations** (1960) describe the relative motion between two objects in nearby circular orbits. Also known as the **Hill equations**, they are used by NASA, ESA, and SpaceX for proximity operations.
 
 **Mean motion:**
-```
-        2π
-n = ──────────     [rad/s]
-     T_period
-```
+
+$$n = \frac{2\pi}{T_{\text{period}}} \quad \text{[rad/s]}$$
 
 **CW Relative Position Equations** (after impulsive burn ΔV at t=0, evaluated at t=Δt):
 
@@ -375,25 +337,21 @@ Given burn components in RTN frame:
 - `Δv_T` = transverse (along-track) velocity change  
 - `Δv_N` = normal (cross-track) velocity change
 
-```
-x(Δt) = (Δv_R / n) · sin(nΔt) + (2Δv_T / n) · (1 - cos(nΔt))
+$$x(\Delta t) = \frac{\Delta v_R}{n}\sin(n\Delta t) + \frac{2\Delta v_T}{n}\bigl(1 - \cos(n\Delta t)\bigr)$$
 
-y(Δt) = (2Δv_R / n) · (cos(nΔt) - 1) + (Δv_T / n) · (4sin(nΔt) - 3nΔt)
+$$y(\Delta t) = \frac{2\Delta v_R}{n}\bigl(\cos(n\Delta t) - 1\bigr) + \frac{\Delta v_T}{n}\bigl(4\sin(n\Delta t) - 3n\Delta t\bigr)$$
 
-z(Δt) = (Δv_N / n) · sin(nΔt)
-```
+$$z(\Delta t) = \frac{\Delta v_N}{n}\sin(n\Delta t)$$
 
 Where `Δt` = time from burn to Time of Closest Approach (TCA) in seconds.
 
 **Total 3D displacement from burn:**
-```
-|Δr⃗| = √(x² + y² + z²)     [meters]
-```
+
+$$|\Delta\vec{r}| = \sqrt{x^2 + y^2 + z^2} \quad \text{[meters]}$$
 
 **New miss distance (root-sum-square combination):**
-```
-d_new = √(d_current² + (|Δr⃗| / 1000)²)     [km]
-```
+
+$$d_{\text{new}} = \sqrt{d_{\text{current}}^2 + \left(\frac{|\Delta\vec{r}|}{1000}\right)^2} \quad \text{[km]}$$
 
 **Burn direction mapping:**
 
@@ -408,9 +366,7 @@ d_new = √(d_current² + (|Δr⃗| / 1000)²)     [km]
 
 **Inverse CW — Solve ΔV for target miss distance:**
 
-```
-ΔV ≈ (d_target - d_current) × 1000 / (2 × Δt)     [m/s]
-```
+$$\Delta V \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{2 \times \Delta t} \quad \text{[m/s]}$$
 
 This linear approximation is valid when the required deflection is small compared to the orbital radius (satisfied for all LEO avoidance maneuvers in the typical 0.1–2 km range).
 
@@ -470,15 +426,14 @@ void main() {
 | Polar cluster | 300 – 1,500 km | 2,000 pts | Cool grey | All inclinations (±180°) |
 
 **Shell point generation formula:**
-```
-radius = (Rₑ + altitude_km) / 6378.137        (in Three.js scene units, normalized to Earth radii)
-θ = random × 2π                                (longitude)
-φ = π/2 + inclination_spread × (random - 0.5) (colatitude ± spread)
 
-x = r × sin(φ) × cos(θ)
-y = r × cos(φ)
-z = r × sin(φ) × sin(θ)
-```
+$$r = \frac{R_e + \text{altitude\_km}}{6378.137} \quad \text{(normalized to Earth radii)}$$
+
+$$\theta = \text{random} \times 2\pi \quad \text{(longitude)}$$
+
+$$\phi = \frac{\pi}{2} + \text{inclination\_spread} \times (\text{random} - 0.5) \quad \text{(colatitude} \pm \text{spread)}$$
+
+$$x = r\sin\phi\cos\theta, \qquad y = r\cos\phi, \qquad z = r\sin\phi\sin\theta$$
 
 ### Orbit Trajectory Lines
 
@@ -498,12 +453,11 @@ Dashed hazard lines animate via dashOffset scrolling in the render loop (creates
 
 Midpoints of active conjunction vectors are projected from 3D world space to 2D screen space each frame:
 
-```
-vec_ndc = world_position.clone().project(camera)   // NDC coords [-1, 1]
+$$\vec{v}_{\text{ndc}} = \text{world\_position}.\text{project}(\text{camera}) \quad \text{(NDC coords } [-1,1]\text{)}$$
 
-screen_x = (vec_ndc.x × 0.5 + 0.5) × canvas_width
-screen_y = (-vec_ndc.y × 0.5 + 0.5) × canvas_height
-```
+$$\text{screen}_x = \left(\frac{v_{\text{ndc},x}}{2} + 0.5\right) \times \text{canvas\_width}$$
+
+$$\text{screen}_y = \left(-\frac{v_{\text{ndc},y}}{2} + 0.5\right) \times \text{canvas\_height}$$
 
 Labels only render when `vec_ndc.z ≤ 1.0` (in front of camera near-plane).
 
