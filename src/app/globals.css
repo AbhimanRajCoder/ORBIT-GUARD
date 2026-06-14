@@ -1,0 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  /* Custom Color Tokens (SpaceX Cinematic Mission Control Style) */
+  --color-void: #000000;             /* Pure black canvas background */
+  --color-abyss: #000000;            /* Content container backgrounds sit direct on void black */
+  --color-iron: #262629;             /* Dark Gunmetal - low contrast separators and boundaries */
+  --color-graphite: #404043;         /* Medium Gunmetal - active separators and secondary outline borders */
+  --color-ash: #8e9096;              /* Dim Steel - secondary text and muted readouts */
+  --color-bone: #f0f0fa;             /* Star White - primary technical typography and active elements */
+  
+  /* Chromatic Action Accents - precise scientific colors */
+  --color-orbit-cyan: #00bae2;       /* Telemetry Blue/Cyan signal */
+  --color-threat-amber: #ffb829;     /* Caution Warning yellow */
+  --color-collision-red: #ff3355;    /* Collision hazard critical alarm */
+  --color-cleared-green: #0ae448;    /* Nominal health green */
+  
+  /* Structural & Atmospheric Accents */
+  --color-plum-voltage: #8052ff;     /* AI Brand pulse */
+  --color-midnight-violet: #151520;  /* Subtle background space hue */
+
+  /* Typography Font Mappings */
+  --font-display: 'Space Grotesk', 'D-DIN', sans-serif;
+  --font-data: 'Roboto Mono', monospace;
+  --font-body: 'Space Grotesk', sans-serif;
+
+  /* Border Radius Limits: max 4px for sharp technical instrument aesthetic */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+
+  /* Space themed colors mapped to OrbitGuard variables for EarthView */
+  --color-space-section: var(--color-abyss);
+  --color-space-card: var(--color-void);
+  --color-space-border: var(--color-iron);
+  --color-space-border-hover: var(--color-graphite);
+  --color-space-text-main: var(--color-bone);
+  --color-space-text-heading: var(--color-bone);
+  --color-space-text-muted: var(--color-ash);
+}
+
+/* Base Styles */
+html,
+body {
+  background-color: var(--color-void);
+  color: var(--color-bone);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar to match Dark UI theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-void);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-iron);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-graphite);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-slide {
+  animation: fadeInSlide 0.4s ease-out forwards;
+}
+
+.animate-fade-in-slide-medium {
+  animation: fadeInSlide 0.6s ease-out forwards;
+}
+
+.animate-fade-in-slide-slow {
+  animation: fadeInSlide 0.8s ease-out forwards;
+}
+
+/* Premium Instrument Panel HUD Typography */
+.font-display {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Form Controls & Inputs - Outline switches on void canvas */
+input, select, textarea {
+  background-color: var(--color-void) !important;
+  border: 1px solid var(--color-iron) !important;
+  border-radius: var(--radius-md) !important;
+  color: var(--color-bone) !important;
+  font-family: var(--font-data), monospace !important;
+  font-size: 12px !important;
+  letter-spacing: 0.04em !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-orbit-cyan) !important;
+  box-shadow: 0 0 0 1px var(--color-orbit-cyan) !important;
+  outline: none !important;
+}
+
+/* Layout outline highlights and buttons hover corrections */
+button:hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ─── Mobile Responsive Adjustments ─────────────────────────── */
+@media (max-width: 768px) {
+  .font-display {
+    letter-spacing: 0.04em;
+  }
+
+  /* Stack grids vertically */
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Reduce card padding on small screens */
+  .p-6 {
+    padding: 1rem !important;
+  }
+}
+
+/* ─── Keyboard Shortcut Indicator ───────────────────────────── */
+kbd {
+  font-family: var(--font-data), monospace;
+  border-radius: 3px;
+  user-select: none;
+}
+
+/* ─── Custom GSAP 3D & Premium Hover Effects ────────────────── */
+.perspective-1000 {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Shifting card glare shine reflection */
+.card-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle 150px at var(--mouse-x, 0%) var(--mouse-y, 0%),
+    rgba(255, 184, 41, 0.15),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+/* Alternate cyan glare for specific cards */
+.card-glare-cyan {
+  background: radial-gradient(
+    circle 150px at var(--mouse-x, 0%) var(--mouse-y, 0%),
+    rgba(0, 186, 226, 0.15),
+    transparent 70%
+  );
+}
+
+.js-tilt-card:hover .card-glare {
+  opacity: 1;
+}
+
+/* Grid overlay background */
+.grid-scanlines {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Border sweep keyframes */
+@keyframes borderSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.sweep-border {
+  position: relative;
+}
+
+.sweep-border::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255, 184, 41, 0.4), rgba(255,255,255,0.1));
+  background-size: 200% 200%;
+  z-index: -1;
+  opacity: 0;
+  border-radius: 4px;
+  transition: opacity 0.3s ease;
+  animation: borderSweep 4s linear infinite;
+}
+
+.sweep-border:hover::after {
+  opacity: 1;
+}
+
+
