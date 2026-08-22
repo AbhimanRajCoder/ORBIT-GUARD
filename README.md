@@ -1,92 +1,96 @@
-# OrbitGuard — Real-Time Spacecraft Collision Avoidance System
+# OrbitGuard: Real-Time Spacecraft Collision Avoidance System
 
-<div align="center">
-
-![OrbitGuard Banner](https://img.shields.io/badge/OrbitGuard-v2.0-7c3aed?style=for-the-badge&logo=satellite&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=nextdotjs)
-![Three.js](https://img.shields.io/badge/Three.js-0.184-049ef4?style=for-the-badge&logo=threedotjs)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178c6?style=for-the-badge&logo=typescript)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-
-**A full-stack, mission-control-grade space situational awareness platform that detects orbital conjunction threats, computes physics-based evasive maneuvers, and visualizes live satellite trajectories in 3D.**
-
-[Live Demo](#) • [Architecture](#architecture) • [Physics Engine](#physics-engine) • [API Reference](#api-reference)
-
-</div>
+A full-stack, mission-control-grade space situational awareness platform that detects orbital conjunction threats, computes physics-based evasive maneuvers, and visualizes live satellite trajectories in 3D. All calculations in this system are backed by peer-reviewed astrodynamics formulas utilized by NASA's Conjunction Data Messages (CDM) and the 18th Space Control Squadron.
 
 ---
 
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)  
-2. [Key Features](#2-key-features)  
-3. [Tech Stack](#3-tech-stack)  
-4. [Architecture](#4-architecture)  
-5. [Physics Engine](#5-physics-engine)  
-   - 5.1 [SGP4 Orbital Propagation](#51-sgp4-orbital-propagation)  
-   - 5.2 [Orbital Period & Velocity](#52-orbital-period--velocity)  
-   - 5.3 [Collision Probability — Akella-Alfriend 2D Method](#53-collision-probability--akella-alfriend-2d-method)  
-   - 5.4 [Tsiolkovsky Rocket Equation — Fuel Cost](#54-tsiolkovsky-rocket-equation--fuel-cost)  
-   - 5.5 [Clohessy-Wiltshire Equations — Maneuver ΔV Solver](#55-clohessy-wiltshire-equations--maneuver-v-solver)  
-6. [3D Orbit Visualizer](#6-3d-orbit-visualizer)  
-7. [Pages & Routes](#7-pages--routes)  
-8. [Data Model](#8-data-model)  
-9. [Getting Started](#9-getting-started)  
-10. [Project Structure](#10-project-structure)  
-11. [Hackathon Context](#11-hackathon-context)  
+2. [The Five System Pillars](#2-the-five-system-pillars)  
+3. [Key Features](#3-key-features)  
+4. [Tech Stack](#4-tech-stack)  
+5. [System Architecture](#5-system-architecture)  
+6. [Physics Engine and Mathematical Formulations](#6-physics-engine-and-mathematical-formulations)  
+   - 6.1 [SGP4 Orbital Propagation and ECEF Rotation](#61-sgp4-orbital-propagation-and-ecef-rotation)  
+   - 6.2 [Akella-Alfriend 2D Collision Probability (Pillar 2)](#62-akella-alfriend-2d-collision-probability-pillar-2)  
+   - 6.3 [Clohessy-Wiltshire relative-motion Maneuver Solver (Pillar 3)](#63-clohessy-wiltshire-relative-motion-maneuver-solver-pillar-3)  
+   - 6.4 [Tsiolkovsky Propellant Mass Calculation](#64-tsiolkovsky-propellant-mass-calculation)  
+   - 6.5 [Multi-Objective Trade-Off and Optimization (Pillar 4)](#65-multi-objective-trade-off-and-optimization-pillar-4)  
+7. [3D Orbit Visualizer (Pillar 5)](#7-3d-orbit-visualizer-pillar-5)  
+8. [Developer Audit Mode (Pillar Verification)](#8-developer-audit-mode-pillar-verification)  
+9. [Pages & Routes](#9-pages--routes)  
+10. [Data Model](#10-data-model)  
+11. [Getting Started](#11-getting-started)  
+12. [Verification and Integration Test Suite](#12-verification-and-integration-test-suite)  
 
 ---
 
 ## 1. Project Overview
 
-OrbitGuard is a **spacecraft collision avoidance** web application built for the real-world problem of **Kessler Syndrome** — the cascading chain reaction of space debris collisions that could render Low Earth Orbit (LEO) permanently unusable.
+OrbitGuard is a spacecraft collision avoidance web application designed to combat Kessler Syndrome—the cascading chain reaction of orbital collisions that threatens to render Low Earth Orbit (LEO) permanently unusable. 
 
-**The core workflow:**
-
-```
-TLE Data (NORAD) → SGP4 Propagation → Conjunction Detection → 
-Collision Probability (Pc) → CW Maneuver Solver → Burn Authorization → 3D Visualization
-```
-
-Every calculation in this system is backed by **peer-reviewed astrodynamics formulas** used by NASA's Conjunction Data Messages (CDM) and the 18th Space Control Squadron.
-
----
-
-## 2. Key Features
-
-| Feature | Description |
-|---|---|
-| 🌍 **Live 3D Globe** | WebGL Earth with SGP4-propagated orbits, Kessler debris cloud, animated hazard trajectories |
-| ⚠️ **Conjunction Detection** | Real-time threat registry with time-to-closest-approach (TCA) and miss distance |
-| 📊 **Collision Probability** | Akella-Alfriend 2D analytical Pc computation with RTN→ECI covariance rotation |
-| 🚀 **Maneuver Simulator** | CW-equations-based ΔV solver with Tsiolkovsky fuel cost, interactive sandbox |
-| 🤖 **AI Situation Briefing** | Natural-language orbital safety audit summarizing all telemetry |
-| 🎯 **Guided Demo Playbook** | Cinematic 5-step walkthrough with voice narration (Web Speech API) and subtitles |
-| 📈 **Analytics Charts** | Tsiolkovsky mass curves, lead-time efficiency, CW trajectory plots (Recharts) |
-| 🔐 **Secure Uplink** | SHA-256 cryptographic command signature for burn authorization |
-| 🔊 **Mission Control Audio** | Web Audio API sound effects (alarm, chime, fanfare) synced to mission phases |
+The application implements a closed-loop workflow:
+1. Ingests live Two-Line Element (TLE) datasets from CelesTrak.
+2. Runs Simplified General Perturbations 4 (SGP4) propagation.
+3. Detects conjunction threats within a defined safety volume.
+4. Computes 2D analytical Collision Probability ($P_c$).
+5. Solves relative-motion target maneuvers via Clohessy-Wiltshire (CW) equations.
+6. Authorizes burns using cryptographic operator verification.
+7. Renders the resulting trajectories in a photorealistic 3D WebGL globe.
 
 ---
 
-## 3. Tech Stack
+## 2. The Five System Pillars
 
-| Layer | Technology |
-|---|---|
-| **Framework** | Next.js 15 (App Router, React Server Components) |
-| **Language** | TypeScript 5 (strict mode) |
-| **3D Engine** | Three.js 0.184 + OrbitControls |
-| **Orbital Math** | `satellite.js` 7.0 (SGP4/SDP4 propagator) |
-| **Charts** | Recharts 3.8 |
-| **UI Components** | Radix UI (Dialog, Dropdown, Tabs) |
-| **Animations** | GSAP 3.15, CSS keyframes |
-| **Icons** | Lucide React |
-| **Styling** | Tailwind CSS v4 |
-| **Testing** | Vitest |
-| **Package Manager** | pnpm |
+The platform is engineered around five fundamental modules:
+
+### Pillar 1: Conjunction Detection and Fine Screening
+Evaluates active satellite trajectories against cataloged space objects. Initial screening filters out orbits with non-intersecting apogee/perigee envelopes. Fine screening propagates remaining candidates using SGP4 in 1-second intervals over a 24-hour look-ahead window to locate the exact Time of Closest Approach (TCA) and minimum nominal miss distance.
+
+### Pillar 2: AI Risk Triage and Explanation
+Quantifies the danger of detected conjunction events. Computes collision probability ($P_c$) using the Akella-Alfriend 2D analytical model on the encounter plane. An integrated AI briefing engine translates raw orbital parameters (RTN covariances, relative velocities, and risk levels) into plain-language summaries for mission operators.
+
+### Pillar 3: Evasive Maneuver Simulator
+Allows operators to simulate impulsive velocity changes ($\Delta V$) in the Hill (RTN) frame to deflect a satellite's path. Calculates three pre-calibrated options representing distinct operational intents: Minimum Fuel (2 km target), Balanced (5 km target), and Maximum Safety (12 km target). Calculates fuel costs using the Tsiolkovsky Rocket Equation.
+
+### Pillar 4: Multi-Objective Trade-Off and Optimization
+Ranks maneuver options using a weighted composite score (40% Safety, 30% Fuel Efficiency, 30% Secondary Conjunction Avoidance). Automatically disqualifies and greys out any option that creates a secondary conjunction closer than the original hazard distance.
+
+### Pillar 5: 3D Trajectory and Conjunction Visualization
+Provides interactive spatial context using a Three.js WebGL rendering of Earth, the Kessler debris cloud, primary/secondary orbits, and the post-burn evasive trajectory. Projects the closest-approach point as a spherical "danger zone" based on the combined hard-body covariance.
 
 ---
 
-## 4. Architecture
+## 3. Key Features
+
+*   **Photorealistic 3D Globe**: WebGL Earth with SGP4-propagated orbits, animated hazard lines, and a simulated Kessler debris cloud.
+*   **Conjunction Detection**: Real-time threat registry with time-to-closest-approach (TCA) and miss distance telemetry.
+*   **Collision Probability**: Akella-Alfriend 2D analytical $P_c$ calculation with RTN-to-ECI covariance rotation.
+*   **Maneuver Simulator**: CW-equations-based $\Delta V$ solver with Tsiolkovsky propellant mass curves and an interactive sandbox.
+*   **AI Situation Briefing**: Natural-language orbital safety audit summarizing all telemetry.
+*   **Guided Demo Playbook**: Cinematic 5-step walkthrough with voice narration (Web Speech API) and subtitles.
+*   **Analytics Charts**: Propellant spent curves, lead-time efficiency, and relative coordinate displacement plots.
+*   **Secure Uplink**: SHA-256 cryptographic command signature for burn authorization.
+*   **Mission Control Audio**: Web Audio API sound effects synced to mission phases.
+*   **Developer Audit Mode**: Floating toggle that overlays raw backend JSON field names next to every rendered metric for auditability.
+
+---
+
+## 4. Tech Stack
+
+*   **Framework**: Next.js 15 (App Router, Server Components)
+*   **Language**: TypeScript 5 (Strict Mode)
+*   **3D Engine**: Three.js 0.184
+*   **Orbital Math**: `satellite.js` 7.0 (SGP4/SDP4 propagator)
+*   **Charts**: Recharts 3.8
+*   **UI Components**: Radix UI (Dialog, Dropdown, Tabs)
+*   **Animations**: GSAP 3.15
+*   **Package Manager**: pnpm
+
+---
+
+## 5. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -108,591 +112,177 @@ Every calculation in this system is backed by **peer-reviewed astrodynamics form
 │  └────┬───────────────────────────────────────────────────────┘  │
 │       │                                                           │
 │  ┌────▼────────────────────────────────────────────────────────┐  │
-│  │                    Physics Engine                            │  │
-│  │  sgp4-propagator.ts  |  orbital-physics.ts                  │  │
-│  │  SGP4  |  CW equations  |  Akella-Alfriend Pc  |  Rocket eq │  │
+│  │                 Physics Engine (FastAPI)                   │  │
+│  │  SGP4  |  CW Equations  |  Akella-Alfriend Pc  |  Rocket eq │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
-
-```
-1. TLE strings (Line 1 + Line 2) stored per satellite in MockDatabase
-2. SGP4 propagator converts TLE → ECI position/velocity at any time t
-3. orbital-physics.ts computes Pc, ΔV, fuel cost, new miss distance
-4. useOrbitStream hook exposes { satellites, conjunctionEvents } to all pages
-5. EarthView.tsx draws Three.js scene (Earth, orbit lines, debris cloud)
-6. Maneuver page renders CW results + Tsiolkovsky charts via Recharts
-```
-
 ---
 
-## 5. Physics Engine
-
-All formulas are implemented in [`src/lib/orbital-physics.ts`](./src/lib/orbital-physics.ts) and [`src/lib/sgp4-propagator.ts`](./src/lib/sgp4-propagator.ts).
+## 6. Physics Engine and Mathematical Formulations
 
 ### Constants Used
 
-| Symbol | Value | Unit | Description |
-|---|---|---|---|
-| `Rₑ` | 6378.137 | km | Earth's equatorial radius |
-| `GM` | 398600.4418 | km³/s² | Earth's gravitational parameter (μ) |
-| `g₀` | 9.80665 | m/s² | Standard gravity |
+*   `Re` = $6378.137\text{ km}$ (Earth equatorial radius)
+*   `GM` = $398600.4418\text{ km}^3/\text{s}^2$ (Earth gravitational parameter $\mu$)
+*   `g0` = $9.80665\text{ m/s}^2$ (Standard gravity acceleration)
 
 ---
 
-### 5.1 SGP4 Orbital Propagation
+### 6.1 SGP4 Orbital Propagation and ECEF Rotation
 
-OrbitGuard uses the **Simplified General Perturbations 4 (SGP4)** model via the `satellite.js` library. SGP4 is the standard algorithm used by NORAD to propagate Two-Line Element (TLE) sets.
+OrbitGuard propagates standard Two-Line Element (TLE) sets using the SGP4 mathematical model to obtain ECI (Earth-Centered Inertial) state vectors:
+$$\vec{r}_{\text{TEME}}(t) = [x,\ y,\ z]^T \quad (\text{km})$$
+$$\vec{v}_{\text{TEME}}(t) = [\dot{x},\ \dot{y},\ \dot{z}]^T \quad (\text{km/s})$$
 
-**TLE Format (Two-Line Element Set):**
+To align coordinates with a fixed Earth mesh in Three.js, ECI positions are rotated into the Earth-Centered Earth-Fixed (ECEF) frame using Greenwich Mean Sidereal Time ($\text{GMST}$):
+$$\vec{r}_{\text{ECEF}}(t) = \mathbf{R}_z(\text{GMST}(t)) \, \vec{r}_{\text{TEME}}(t)$$
+$$\mathbf{R}_z(\theta) = \begin{pmatrix} \cos\theta & \sin\theta & 0 \\ -\sin\theta & \cos\theta & 0 \\ 0 & 0 & 1 \end{pmatrix}$$
 
-```
-Line 1: 1 NNNNNC NNNNNAAA NNNNN.NNNNNNNN +.NNNNNNNN +NNNNN-N +NNNNN-N N NNNNN
-Line 2: 2 NNNNN NNN.NNNN NNN.NNNN NNNNNNN NNN.NNNN NNN.NNNN NN.NNNNNNNNNNNNNN
-```
-
-**Orbital Elements extracted from TLE:**
-
-| Element | Symbol | Description |
-|---|---|---|
-| Inclination | `i` | Angle between orbit plane and equatorial plane |
-| Right Ascension of Ascending Node | `Ω` | Longitude of ascending node |
-| Eccentricity | `e` | Shape of orbit (0 = circular, 1 = parabolic) |
-| Argument of Perigee | `ω` | Angle from ascending node to perigee |
-| Mean Anomaly | `M` | Position along orbit at epoch |
-| Mean Motion | `n` | Revolutions per day |
-
-**SGP4 output** — ECI (Earth-Centered Inertial) state vector:
-
-$$\vec{r}(t) = [x,\ y,\ z] \quad \text{(km)}$$
-$$\vec{v}(t) = [\dot{x},\ \dot{y},\ \dot{z}] \quad \text{(km/s)}$$
-
-**Coordinate conversion ECI → Geodetic:**
-
-$$\text{GMST}(t) = \text{Greenwich Mean Sidereal Time at time } t$$
-$$\lambda = \text{atan2}(y,\ x) - \text{GMST} \quad \text{(longitude)}$$
-$$\phi = \text{atan2}\!\left(z,\ \sqrt{x^2 + y^2}\right) \quad \text{(geocentric latitude)}$$
-$$h = |\vec{r}| - R_e \quad \text{(altitude)}$$
-
-Implementation: [`propagateTLE()`](./src/lib/sgp4-propagator.ts#L16) and [`propagateTLEToGeodetic()`](./src/lib/sgp4-propagator.ts#L43)
+The geodetic coordinates are then resolved:
+$$\lambda = \text{atan2}(y_{\text{ECEF}}, x_{\text{ECEF}})$$
+$$\phi = \text{atan2}\left(z_{\text{ECEF}}, \sqrt{x_{\text{ECEF}}^2 + y_{\text{ECEF}}^2}\right)$$
+$$h = |\vec{r}_{\text{ECEF}}| - R_e$$
 
 ---
 
-### 5.2 Orbital Period & Velocity
+### 6.2 Akella-Alfriend 2D Collision Probability (Pillar 2)
 
-**Orbital Period (Kepler's Third Law):**
+The 2D encounter frame is defined at TCA relative to the relative velocity vector:
+$$\hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|}, \qquad \hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|}, \qquad \hat{e}_y = \hat{e}_z \times \hat{e}_x$$
 
-$$T = 2\pi \sqrt{\frac{a^3}{GM}} \quad \text{[seconds]}$$
+The position covariances of the primary and secondary objects are defined in their local Radial-Transverse-Normal (RTN) frames:
+$$\mathbf{C}_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)$$
 
-Where:
-- `a = Rₑ + h` = semi-major axis (km)
-- `GM` = Earth's gravitational parameter (km³/s²)
+These are combined ($\mathbf{C}_{\text{combined}} = \mathbf{C}_A + \mathbf{C}_B$) and projected onto the 2D encounter plane:
+$$\mathbf{C}_e = \begin{pmatrix} C_{e00} & C_{e01} \\ C_{e01} & C_{e11} \end{pmatrix} = \begin{pmatrix} \hat{e}_x \cdot \mathbf{C}_{\text{combined}} \cdot \hat{e}_x & \hat{e}_x \cdot \mathbf{C}_{\text{combined}} \cdot \hat{e}_y \\ \hat{e}_x \cdot \mathbf{C}_{\text{combined}} \cdot \hat{e}_y & \hat{e}_y \cdot \mathbf{C}_{\text{combined}} \cdot \hat{e}_y \end{pmatrix}$$
 
-Converted to minutes: `T_min = T_sec / 60`
-
-**Example:** Starlink at 550 km altitude → T ≈ 95.6 minutes
-
-**Circular Orbital Velocity (Vis-viva equation for circular orbit):**
-
-$$v = \sqrt{\frac{GM}{a}} \quad \text{[km/s]}$$
-
-**Example:** At 550 km → v ≈ 7.60 km/s (27,360 km/h)
-
-Implementation: [`calculateOrbitalPeriod()`](./src/lib/orbital-physics.ts#L17) and [`calculateOrbitalVelocity()`](./src/lib/orbital-physics.ts#L28)
+The collision probability $P_c$ is calculated by integrating the 2D Gaussian probability density function over a circular hard-body region of radius $R$:
+$$P_c = \frac{R^2}{2\sqrt{\det(\mathbf{C}_e)}} \exp\left( -\frac{1}{2} \vec{r}_p^T \mathbf{C}_e^{-1} \vec{r}_p \right)$$
+Where $\vec{r}_p = [x_p, y_p]^T$ is the projected relative position vector on the encounter plane.
 
 ---
 
-### 5.3 Collision Probability — Akella-Alfriend 2D Method
+### 6.3 Clohessy-Wiltshire relative-motion Maneuver Solver (Pillar 3)
 
-This is the core safety computation. OrbitGuard implements the **Akella-Alfriend (2000) 2D Analytical Pc** method, the same approach used in NASA's CARA (Conjunction Assessment Risk Analysis) program.
-
-#### Step 1 — Relative State
-
-$$\Delta\vec{r} = \vec{r}_A - \vec{r}_B \quad \text{(relative position, km)}$$
-$$\Delta\vec{v} = \vec{v}_A - \vec{v}_B \quad \text{(relative velocity, km/s)}$$
-
-#### Step 2 — Encounter Reference Frame
-
-The collision plane is defined perpendicular to the relative velocity vector:
-
-$$\hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|} \quad \text{(along relative velocity)}$$
-
-$$\hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|} \quad \text{(perpendicular, in orbit plane)}$$
-
-$$\hat{e}_y = \hat{e}_z \times \hat{e}_x \quad \text{(completes right-handed frame)}$$
-
-#### Step 3 — Covariance Rotation (RTN → ECI)
-
-Each satellite's position uncertainty is modeled in **RTN coordinates** (Radial, Transverse, Normal):
-
-```
-Primary (A):    σ_R = 0.3 km,  σ_T = 1.5 km,  σ_N = 0.3 km
-Secondary (B):  σ_R = 0.5 km,  σ_T = 2.0 km,  σ_N = 0.5 km
-```
-
-RTN unit vectors:
-
-$$\hat{u}_R = \frac{\vec{r}}{|\vec{r}|} \quad \text{(radial: outward)}$$
-
-$$\hat{u}_N = \frac{\vec{r} \times \vec{v}}{|\vec{r} \times \vec{v}|} \quad \text{(normal: angular momentum)}$$
-
-$$\hat{u}_T = \hat{u}_N \times \hat{u}_R \quad \text{(transverse: along-track)}$$
-
-ECI covariance matrix (3×3):
-
-$$C_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)$$
-
-Combined covariance:
-
-$$C_{\text{combined}} = C_A + C_B$$
-
-#### Step 4 — Project to 2D Encounter Plane
-
-$$C_e = \begin{pmatrix} C_{e00} & C_{e01} \\ C_{e01} & C_{e11} \end{pmatrix}$$
-
-where:
-
-$$C_{e00} = \hat{e}_x \cdot C_{\text{combined}} \cdot \hat{e}_x, \quad C_{e01} = \hat{e}_x \cdot C_{\text{combined}} \cdot \hat{e}_y, \quad C_{e11} = \hat{e}_y \cdot C_{\text{combined}} \cdot \hat{e}_y$$
-
-Projected miss distance on encounter plane:
-
-$$x_p = \Delta\vec{r} \cdot \hat{e}_x, \qquad y_p = \Delta\vec{r} \cdot \hat{e}_y$$
-
-Mahalanobis distance squared:
-
-$$d_M^2 = \begin{bmatrix} x_p & y_p \end{bmatrix} C_e^{-1} \begin{bmatrix} x_p \\ y_p \end{bmatrix}$$
-
-#### Step 5 — Akella-Alfriend Pc Formula
-
-$$P_c = \frac{R^2}{2\sqrt{\det(C_e)}} \cdot \exp\!\left(-\frac{1}{2}\, d_M^2\right)$$
-
-Where:
-- `R` = combined hard-body radius (primary + secondary, in km) — default 15 m
-- `det(C_e) = C_e00 · C_e11 - C_e01²`
-
-**Risk thresholds used in OrbitGuard:**
-
-| Pc Range | Risk Level | Action |
-|---|---|---|
-| `Pc ≥ 1 × 10⁻⁴` | 🔴 RED | Immediate maneuver required |
-| `10⁻⁵ ≤ Pc < 10⁻⁴` | 🟡 YELLOW | Maneuver recommended |
-| `Pc < 10⁻⁵` | 🟢 GREEN | No action required |
-
-Implementation: [`estimateCollisionProbability()`](./src/lib/orbital-physics.ts#L38)
-
----
-
-### 5.4 Tsiolkovsky Rocket Equation — Fuel Cost
-
-The **Tsiolkovsky Rocket Equation** (1903) gives the propellant mass required to achieve a velocity change ΔV:
-
-$$m_{\text{prop}} = m_0 \cdot \left(1 - \exp\!\left(\frac{-\Delta V}{I_{sp} \cdot g_0}\right)\right)$$
-
-Where:
-- `m₀` = wet mass of satellite (kg) — default 500 kg
-- `ΔV` = required velocity change (m/s)
-- `Isp` = specific impulse of thruster (s) — default 220 s (hydrazine monopropellant)
-- `g₀` = 9.80665 m/s² (standard gravity)
-- `m_prop` = propellant mass consumed (kg)
-
-**Example calculation for a typical LEO avoidance maneuver:**
-
-```
-ΔV = 0.35 m/s
-m₀ = 500 kg
-Isp = 220 s
-
-m_prop = 500 × (1 - exp(-0.35 / (220 × 9.80665)))
-       = 500 × (1 - exp(-0.0001622))
-       = 500 × 0.0001622
-       ≈ 0.081 kg  (81 grams of fuel)
-```
-
-**Exhaust velocity:**
-
-$$v_e = I_{sp} \times g_0 = 220 \times 9.80665 \approx 2157 \ \text{m/s}$$
-
-**Tsiolkovsky Mass Ratio Curve** (shown in Maneuvers page chart):
-
-$$\frac{m_{\text{prop}}}{m_0} = 1 - \exp\!\left(\frac{-\Delta V}{v_e}\right)$$
-
-Implementation: [`calculateFuelCost()`](./src/lib/orbital-physics.ts#L190)
-
----
-
-### 5.5 Clohessy-Wiltshire Equations — Maneuver ΔV Solver
-
-The **Clohessy-Wiltshire (CW) equations** (1960) describe the relative motion between two objects in nearby circular orbits. Also known as the **Hill equations**, they are used by NASA, ESA, and SpaceX for proximity operations.
-
-**Mean motion:**
-
-$$n = \frac{2\pi}{T_{\text{period}}} \quad \text{[rad/s]}$$
-
-**CW Relative Position Equations** (after impulsive burn ΔV at t=0, evaluated at t=Δt):
-
-Given burn components in RTN frame:
-- `Δv_R` = radial (outward) velocity change
-- `Δv_T` = transverse (along-track) velocity change  
-- `Δv_N` = normal (cross-track) velocity change
-
+Relative motion in a circular orbit of mean motion $n = \sqrt{GM/a^3}$ is modeled using the Clohessy-Wiltshire (CW) equations. Given a velocity change impulse $\Delta\vec{v} = [\Delta v_R, \Delta v_T, \Delta v_N]^T$ in the Hill frame at $\Delta t = 0$, the relative position at TCA ($t = \Delta t$) is:
 $$x(\Delta t) = \frac{\Delta v_R}{n}\sin(n\Delta t) + \frac{2\Delta v_T}{n}\bigl(1 - \cos(n\Delta t)\bigr)$$
-
 $$y(\Delta t) = \frac{2\Delta v_R}{n}\bigl(\cos(n\Delta t) - 1\bigr) + \frac{\Delta v_T}{n}\bigl(4\sin(n\Delta t) - 3n\Delta t\bigr)$$
-
 $$z(\Delta t) = \frac{\Delta v_N}{n}\sin(n\Delta t)$$
 
-Where `Δt` = time from burn to Time of Closest Approach (TCA) in seconds.
+Evasive maneuvers are target-solved using the transverse burn ratio:
+$$\Delta v_T \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{2 \Delta t} \quad (\text{m/s})$$
 
-**Total 3D displacement from burn:**
-
-$$|\Delta\vec{r}| = \sqrt{x^2 + y^2 + z^2} \quad \text{[meters]}$$
-
-**New miss distance (root-sum-square combination):**
-
-$$d_{\text{new}} = \sqrt{d_{\text{current}}^2 + \left(\frac{|\Delta\vec{r}|}{1000}\right)^2} \quad \text{[km]}$$
-
-**Burn direction mapping:**
-
-| Direction | Δv_R | Δv_T | Δv_N |
-|---|---|---|---|
-| Prograde | 0 | +ΔV | 0 |
-| Retrograde | 0 | −ΔV | 0 |
-| Radial-Out | +ΔV | 0 | 0 |
-| Radial-In | −ΔV | 0 | 0 |
-| Normal | 0 | 0 | +ΔV |
-| Anti-Normal | 0 | 0 | −ΔV |
-
-**Inverse CW — Solve ΔV for target miss distance:**
-
-$$\Delta V \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{2 \times \Delta t} \quad \text{[m/s]}$$
-
-This linear approximation is valid when the required deflection is small compared to the orbital radius (satisfied for all LEO avoidance maneuvers in the typical 0.1–2 km range).
-
-**Three maneuver tiers computed automatically:**
-
-| Plan | Target Miss | Strategy |
-|---|---|---|
-| Minimum Fuel | 2.0 km | Smallest safe deflection, conserves propellant |
-| Balanced | 5.0 km | NASA/ESA recommended operational threshold |
-| Maximum Safety | 10.0 km | Large margin, used for high-value assets |
-
-Implementation: [`predictNewMissDistance()`](./src/lib/orbital-physics.ts#L204) and [`calculateManeuverOptions()`](./src/lib/orbital-physics.ts#L262)
+The backend compares this linear CW target against an independent nonlinear two-body Kepler propagation to TCA:
+$$\vec{r}_p(t_{\text{TCA}}) = \text{propagate\_two\_body}(\vec{r}_p(t_{\text{burn}}), \vec{v}_p(t_{\text{burn}}) + \Delta\vec{v}_{\text{ECI}}, \Delta t)$$
+If the linear model deviates by $>10\%$ from the SGP4 nonlinear propagation, a `cw_divergence_flag` is set to `true` to warn operators.
 
 ---
 
-## 6. 3D Orbit Visualizer
+### 6.4 Tsiolkovsky Propellant Mass Calculation
 
-The 3D map (`/map`) uses **Three.js WebGL** with the following visual layers, all toggleable from the right-hand control panel:
-
-### Earth Rendering
-
-| Layer | Technology | Detail |
-|---|---|---|
-| Surface | `MeshPhongMaterial` | 2048×2048 NASA Blue Marble texture |
-| Bumps | `bumpMap` | Surface elevation relief (scale 0.04) |
-| Specular | `specularMap` | Ocean glint (shininess 25) |
-| Clouds | Semi-transparent shell | 1024px cloud texture, opacity 0.3 |
-| Atmosphere | Custom `ShaderMaterial` | Back-face additive blending rim glow |
-
-**Atmosphere rim shader (GLSL):**
-
-```glsl
-// Vertex shader
-varying vec3 vNormal;
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}
-
-// Fragment shader
-varying vec3 vNormal;
-void main() {
-  float intensity = pow(0.55 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.8);
-  gl_FragColor = vec4(0.05, 0.55, 0.95, 1.0) * intensity;  // blue glow
-}
-```
-
-### Debris Cloud — Kessler Syndrome Simulation
-
-12,000 points distributed across real-world debris density bands:
-
-| Shell | Altitude Range | Count | Color | Distribution |
-|---|---|---|---|---|
-| LEO (densest) | 200 – 2,000 km | 7,000 pts | Grey-white | Broad inclination spread (±103°) |
-| MEO (GPS band) | 5,000 – 20,000 km | 2,000 pts | Blue-grey | Narrow inclination (±34°) |
-| GEO belt | 35,000 – 36,000 km | 1,000 pts | Warm grey | Near-equatorial (±3°) |
-| Polar cluster | 300 – 1,500 km | 2,000 pts | Cool grey | All inclinations (±180°) |
-
-**Shell point generation formula:**
-
-$$r = \frac{R_e + \text{altitude\_km}}{6378.137} \quad \text{(normalized to Earth radii)}$$
-
-$$\theta = \text{random} \times 2\pi \quad \text{(longitude)}$$
-
-$$\phi = \frac{\pi}{2} + \text{inclination\_spread} \times (\text{random} - 0.5) \quad \text{(colatitude} \pm \text{spread)}$$
-
-$$x = r\sin\phi\cos\theta, \qquad y = r\cos\phi, \qquad z = r\sin\phi\sin\theta$$
-
-### Orbit Trajectory Lines
-
-Each satellite/debris object draws its full orbital trajectory computed from SGP4 propagation over one complete period (180 sample points):
-
-| Object Type | Line Style | Color | Opacity |
-|---|---|---|---|
-| Operational satellite | Solid `LineBasicMaterial` | Cyan `#00bae2` | 0.45 |
-| Large debris | Solid `LineBasicMaterial` | Dark grey `#4a4e55` | 0.35 |
-| Red hazard object | Animated `LineDashedMaterial` | Red `#ff3355` | 0.90 |
-| Yellow caution | Animated `LineDashedMaterial` | Amber `#ffb829` | 0.90 |
-| Post-burn deflection | Animated `LineDashedMaterial` | Green `#00ff88` | 0.90 |
-
-Dashed hazard lines animate via dashOffset scrolling in the render loop (creates a "marching ants" radar sweep effect).
-
-### Screen-Space Conjunction Distance Labels
-
-Midpoints of active conjunction vectors are projected from 3D world space to 2D screen space each frame:
-
-$$\vec{v}_{\text{ndc}} = \text{world\_position}.\text{project}(\text{camera}) \quad \text{(NDC coords } [-1,1]\text{)}$$
-
-$$\text{screen}_x = \left(\frac{v_{\text{ndc},x}}{2} + 0.5\right) \times \text{canvas\_width}$$
-
-$$\text{screen}_y = \left(-\frac{v_{\text{ndc},y}}{2} + 0.5\right) \times \text{canvas\_height}$$
-
-Labels only render when `vec_ndc.z ≤ 1.0` (in front of camera near-plane).
+Propellant spent is calculated using the Tsiolkovsky Rocket Equation:
+$$m_{\text{prop}} = m_0 \left(1 - \exp\left( \frac{-\Delta V}{I_{\text{sp}} g_0} \right)\right)$$
+*   $m_0$ = wet mass of satellite ($500\text{ kg}$)
+*   $I_{\text{sp}}$ = specific impulse of thruster ($220\text{ seconds}$ for hydrazine monopropellant)
+*   $g_0$ = $9.80665\text{ m/s}^2$
 
 ---
 
-## 7. Pages & Routes
+### 6.5 Multi-Objective Trade-Off and Optimization (Pillar 4)
 
-| Route | Component | Description |
-|---|---|---|
-| `/` | `page.tsx` | Root redirect → `/dashboard` |
-| `/dashboard` | Dashboard | Threat cards, live telemetry summary, conjunction table |
-| `/map` | `EarthView.tsx` | Interactive 3D WebGL globe with all orbit visualization |
-| `/maneuvers` | Maneuvers page | CW solver, physics charts, interactive sandbox, burn uplink |
-| `/conjunctions` | Conjunctions | Full conjunction event registry with filters |
-| `/ai-briefing` | AI Briefing | Natural-language orbital safety executive summary |
-| `/api/maneuvers/calculate` | Route Handler | POST endpoint to compute maneuver plans |
+Maneuver options are evaluated using normalized sub-scores:
+1.  **Safety Score** ($S_{\text{safety}}$): Scales linearly relative to a safe nominal separation of $50\text{ km}$:
+    $$S_{\text{safety}} = \min\left(1.0, \frac{d_{\text{achieved\_sgp4}}}{50.0}\right)$$
+2.  **Fuel Score** ($S_{\text{fuel}}$): Normalized inverse cost across options:
+    $$S_{\text{fuel}} = \frac{f_{\text{max}} - f_{\text{cost}}}{f_{\text{max}} - f_{\text{min}}}$$
+3.  **Secondary Risk Score** ($S_{\text{risk}}$): Evaluated from secondary screening. If the secondary conjunction distance $d_{\text{sec}}$ is closer than the original separation $d_{\text{orig}}$, the option is disqualified ($S_{\text{risk}} = 0.0$ and composite score is forced to $0.0$). Otherwise:
+    $$S_{\text{risk}} = 1.0 - \frac{d_{\text{orig}}}{d_{\text{sec}}}$$
 
----
-
-## 8. Data Model
-
-### `Satellite`
-
-```typescript
-interface Satellite {
-  id: string;                    // e.g. "SAT-001"
-  name: string;                  // e.g. "STARLINK-4892"
-  noradId: string;               // NORAD catalog number
-  objectType: 'satellite' | 'debris';
-  riskLevel: 'red' | 'yellow' | 'green';
-  altitude: number;              // km above sea level
-  inclination: number;           // degrees
-  period: number;                // orbital period in minutes
-  tleLine1: string;              // TLE line 1 (NORAD format)
-  tleLine2: string;              // TLE line 2 (NORAD format)
-  fuelRemainingPct: number;      // 0-100
-  estimatedMassKg: number;       // kg
-}
-```
-
-### `ConjunctionEvent`
-
-```typescript
-interface ConjunctionEvent {
-  id: string;                    // e.g. "CONJ-2026-001"
-  primaryId: string;             // Satellite ID (maneuverable asset)
-  primaryName: string;
-  secondaryId: string;           // Debris/secondary object ID
-  secondaryName: string;
-  tca: string;                   // ISO timestamp — Time of Closest Approach
-  missDistance: number;          // km at TCA
-  missDistanceMeters: number;    // meters at TCA
-  pc: number;                    // collision probability (0-1)
-  pcDisplay: string;             // formatted: "3.24 × 10⁻³"
-  riskLevel: 'red' | 'yellow';
-  status: 'active' | 'resolved' | 'monitoring';
-  relativeVelocity: number;      // km/s
-}
-```
-
-### `ManeuverPlan`
-
-```typescript
-interface ManeuverPlan {
-  id: string;                    // e.g. "MP-BAL-CONJ-2026-001"
-  conjunctionEventId: string;
-  satelliteId: string;
-  burnDirection: 'prograde' | 'retrograde' | 'radial-in' | 'radial-out' | 'normal' | 'antinormal';
-  deltaV: number;                // m/s
-  burnTime: string;              // ISO timestamp
-  burnTimingNote: string;        // human-readable timing note
-  currentMissDistance: number;   // km (before maneuver)
-  newMissDistance: number;       // km (after maneuver, from CW solver)
-  targetMissDistance: number;    // km (desired)
-  propellantMassKg: number;      // kg (from Tsiolkovsky eq)
-  specificImpulse: number;       // s
-  satelliteMassKg: number;       // kg
-  status: 'proposed' | 'approved' | 'executed' | 'rejected';
-  createdAt: string;
-}
-```
+The final composite score is calculated as:
+$$\text{Score} = (0.40 \cdot S_{\text{safety}} + 0.30 \cdot S_{\text{fuel}} + 0.30 \cdot S_{\text{risk}}) \times 100.0$$
 
 ---
 
-## 9. Getting Started
+## 7. 3D Orbit Visualizer (Pillar 5)
+
+The interactive WebGL visualizer rendered by `EarthView.tsx` converts ECEF coordinates to Three.js world space coordinates:
+$$x_{\text{three}} = x_{\text{ECEF}} \cdot \text{SCALE}$$
+$$y_{\text{three}} = z_{\text{ECEF}} \cdot \text{SCALE}$$
+$$z_{\text{three}} = y_{\text{ECEF}} \cdot \text{SCALE}$$
+$$\text{SCALE} = \frac{R_{\text{three\_earth}}}{R_{\text{wgs84\_earth}}} = \frac{6.371}{6378.137}$$
+
+### Scene Components:
+*   **Earth mesh**: Phong material with elevation bump maps and specular ocean reflections.
+*   **Kessler Cloud**: 12,000 particle systems distributed across LEO, MEO, and GEO belts.
+*   **Trajectories**: Draws unperturbed nominal orbits, post-burn paths, and the closest approach vector.
+*   **Danger Zone**: Renders a transparent red sphere centered on the threat object at TCA with a radius matching the safety margin.
+
+---
+
+## 8. Developer Audit Mode (Pillar Verification)
+
+OrbitGuard implements a **Developer Audit Mode** toggle. When active:
+*   Hovering over any telemetry number displays a HTML tooltip with its source JSON property path (e.g., `backend: chosen_option.delta_v_ms` or `backend: alert.min_distance_km`).
+*   Small monospace badges are printed adjacent to numbers showing their exact backend data keys (e.g. `[resulting_min_distance_km]`).
+
+This ensures complete alignment between the backend physics calculations and the user interface.
+
+---
+
+## 9. Pages & Routes
+
+*   `/dashboard`: Real-time threat registry cards and alert summaries.
+*   `/map`: Photorealistic 3D WebGL Earth flight path visualizer.
+*   `/maneuvers`: Relative-motion targeting solver, physics charts, and burn uplink.
+*   `/conjunctions`: Historical and active conjunction event filter logs.
+*   `/ai-briefing`: Natural-language safety executive summaries.
+*   `/api/maneuvers/calculate`: Proxy endpoint wrapping FastAPI's `/maneuver/{id}/options` and `/compare/{id}` endpoints.
+
+---
+
+## 10. Data Model
+
+See the TypeScript models defined in [`src/types/index.ts`](./src/types/index.ts) representing `Satellite`, `ConjunctionEvent`, and `ManeuverPlan`.
+
+---
+
+## 11. Getting Started
 
 ### Prerequisites
+*   Node.js $\ge 18.0.0$
+*   pnpm $\ge 8.0.0$
 
-- Node.js ≥ 18.0.0
-- pnpm ≥ 8.0.0
-
+### Setup
 ```bash
-npm install -g pnpm
-```
-
-### Installation
-
-```bash
-# Clone the repository
+# Clone and install dependencies
 git clone https://github.com/your-username/orbitguard.git
 cd orbitguard
-
-# Install dependencies
 pnpm install
 
-# Start development server
+# Start local server
 pnpm dev
 ```
-
-The app starts at **http://localhost:3000**.
-
-### Environment Variables
-
-Copy `.env.local.example` to `.env.local`:
-
-```bash
-cp .env.local.example .env.local
-```
-
-| Variable | Description | Default |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Internal API base URL | `http://localhost:3000` |
-| `NEXT_PUBLIC_CELESTRAK_PROXY` | CelesTrak TLE proxy endpoint | (optional) |
-
-### Running Tests
-
-```bash
-pnpm test          # Run all tests once
-pnpm test:watch    # Watch mode
-```
-
-### Build for Production
-
-```bash
-pnpm build
-pnpm start
-```
+The application will run locally at **http://localhost:3000**.
 
 ---
 
-## 10. Project Structure
+## 12. Verification and Integration Test Suite
 
-```
-orbitguard/
-├── src/
-│   ├── app/                          # Next.js App Router
-│   │   ├── page.tsx                  # Root page
-│   │   ├── layout.tsx                # Global layout, fonts, nav
-│   │   ├── globals.css               # Design tokens, CSS variables
-│   │   ├── dashboard/                # Mission control dashboard
-│   │   ├── map/                      # 3D orbit map page
-│   │   ├── maneuvers/                # Maneuver simulator page
-│   │   ├── conjunctions/             # Conjunction event registry
-│   │   ├── ai-briefing/              # AI executive summary
-│   │   └── api/
-│   │       └── maneuvers/
-│   │           └── calculate/        # POST /api/maneuvers/calculate
-│   │
-│   ├── components/
-│   │   ├── EarthView.tsx             # Three.js 3D globe (main visualization)
-│   │   ├── OnboardingModal.tsx       # First-launch guided intro
-│   │   └── dashboard/
-│   │       ├── GuidedTour.tsx        # 5-step cinematic demo walkthrough
-│   │       └── WorkspaceShell.tsx    # Main layout with nav sidebar
-│   │
-│   ├── lib/
-│   │   ├── sgp4-propagator.ts        # TLE → ECI / Geodetic via satellite.js
-│   │   ├── orbital-physics.ts        # CW, Akella-Alfriend Pc, Tsiolkovsky
-│   │   ├── tle-parser.ts             # TLE string parser and validator
-│   │   ├── db.ts                     # MockDatabase (satellites, events, plans)
-│   │   ├── celestrak.ts              # CelesTrak API integration
-│   │   ├── sound-effects.ts          # Web Audio API (alarm, chime, fanfare)
-│   │   ├── config.ts                 # Global app configuration
-│   │   └── hooks/
-│   │       └── useOrbitStream.ts     # Real-time data hook
-│   │
-│   └── types/
-│       └── index.ts                  # TypeScript interfaces (Satellite, ConjunctionEvent, etc.)
-│
-├── public/                           # Static assets
-├── package.json
-├── tsconfig.json
-├── next.config.ts
-├── vitest.config.ts
-└── README.md
+OrbitGuard includes a multi-tiered test suite powered by Vitest to verify physical and integration correctness.
+
+To run the test suite:
+```bash
+npm run test
 ```
 
----
+### Physical Correctness Tests (`src/visualization_validation.test.ts`)
+*   **Check 1**: Validates ECEF axis mappings against known ISS ground truth from the astrodynamics engine.
+*   **Check 2**: Confirms three-dimensional scale consistency between km and WebGL units.
+*   **Check 3**: Verifies Earth rotation angular velocity and sidereal time matching.
+*   **Check 4**: Assures SGP4 orbit trajectory loops close within natural perturbation margins ($<0.05$ units per orbital period).
+*   **Check 5**: Validates that danger zone center positions match TCA positions.
 
-## 11. Hackathon Context
-
-OrbitGuard was built for a hackathon addressing **Space Sustainability and Orbital Safety**.
-
-### Problem Statement
-
-The United Nations Office for Outer Space Affairs (UNOOSA) estimates over **27,000 trackable debris objects** orbit Earth, with millions of smaller untracked fragments. The **Kessler Syndrome** (proposed by NASA scientist Donald J. Kessler in 1978) describes a cascade scenario where:
-
-```
-Collision → More debris → More collisions → Chain reaction → LEO unusable
-```
-
-Key statistics:
-- **~100 conjunction warnings** are issued per satellite per year
-- Average relative velocity of debris collisions: **10 km/s** (10× faster than a rifle bullet)
-- Energy released per kg at 10 km/s: **50 MJ** (equivalent to 12 kg of TNT)
-- Cost of a single commercial satellite: **$50M – $500M**
-- Cost of Kessler cascade to global economy: **$1 trillion+**
-
-### Solution
-
-OrbitGuard provides a **fully automated, physics-accurate decision support system** that:
-
-1. Ingests live TLE data from CelesTrak (NORAD catalog)
-2. Propagates orbits using the standard SGP4/SDP4 model
-3. Computes collision probability using the **Akella-Alfriend 2D Pc** formula (used by NASA CARA)
-4. Generates optimal evasive burn parameters using **Clohessy-Wiltshire equations**
-5. Calculates propellant cost using the **Tsiolkovsky Rocket Equation**
-6. Provides an AI-generated plain-language safety briefing for non-specialist decision makers
-7. Visualizes all data in a photorealistic 3D globe with Kessler debris simulation
-
-### References
-
-- Akella, M.R. & Alfriend, K.T. (2000). *Probability of Collision Between Space Objects*. Journal of Guidance, Control, and Dynamics.
-- Clohessy, W.H. & Wiltshire, R.S. (1960). *Terminal Guidance System for Satellite Rendezvous*. Journal of the Aerospace Sciences.
-- Tsiolkovsky, K.E. (1903). *The Exploration of Cosmic Space by Means of Reaction Devices*.
-- Hoots, F.R. & Roehrich, R.L. (1980). *Models for Propagation of NORAD Element Sets (Spacetrack Report No. 3)*.
-- NASA Conjunction Assessment Risk Analysis (CARA) — Handbook, 2020.
-- UNOOSA, *Space Debris — The ESA's Annual Space Environment Report*, 2024.
-
----
-
-<div align="center">
-
-**Built with ❤️ for Space Safety**
-
-*OrbitGuard — Because every orbit matters.*
-
-</div>
+### Integration Contract Tests (`src/pillar_integration.test.ts`)
+*   Asserts that Next.js proxy endpoints fetch, map, and return payload properties (including `cw_divergence_flag` and `secondary_conjunction_warning`) that match the backend's Pydantic schemas exactly for validation candidate `62099`.

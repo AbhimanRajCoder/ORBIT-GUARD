@@ -1,0 +1,153 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{color}
+
+\geometry{margin=1in}
+
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codeblue}{rgb}{0.13,0.13,1}
+
+\lstset{
+    backgroundcolor=\color{white},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{codegray},
+    keywordstyle=\color{codeblue},
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    stepnumber=1,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    frame=single,
+    tabsize=2
+}
+
+\title{\textbf{OrbitGuard: Real-Time Spacecraft Collision Avoidance System \\ Technical Implementation and Verification Report}}
+\author{Mission Control Systems Engineer}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document details the architectural design, physical and mathematical formulations, frontend-backend data contracts, and automated verification validation for the OrbitGuard system. OrbitGuard is an operational decision support system that predicts, evaluates, and plans evasive maneuvers for satellites in Low Earth Orbit (LEO) threatened by space debris. 
+\end{abstract}
+
+\section{System Architecture}
+OrbitGuard is structured as a decoupled full-stack platform consisting of:
+\begin{enumerate}
+    \item \textbf{Physics Engine (Python/FastAPI):} Runs the SGP4 propagator, relative orbit mechanics calculations, Clohessy-Wiltshire (CW) relative-motion targeting, and Akella-Alfriend 2D collision probability calculation.
+    \item \textbf{Database (Supabase):} Retains the state of active conjunction alerts, orbital parameters, and approved maneuver logs.
+    \item \textbf{Frontend Application (Next.js/TypeScript):} Provides a real-time Mission Control dashboard, 3D WebGL Earth/orbit visualizer (Three.js), and analytical telemetry panels.
+    \item \textbf{Proxy Layer (Next.js API Routes):} Serves as the interface wrapper translating frontend React hooks calls into backend FastAPI requests.
+\end{enumerate}
+
+\section{Mathematical Formulations}
+
+\subsection{SGP4 Orbital Propagation and ECEF Rotation}
+NORAD Two-Line Element (TLE) sets are propagated using the Simplified General Perturbations 4 (SGP4) model. The output is represented in the Earth-Centered Inertial (TEME) frame at time $t$:
+\begin{equation}
+    \vec{r}_{\text{TEME}}(t) = [x, y, z]^T \quad (\text{km}), \qquad \vec{v}_{\text{TEME}}(t) = [\dot{x}, \dot{y}, \dot{z}]^T \quad (\text{km/s})
+\end{equation}
+To render these coordinates against a fixed, non-rotating Earth mesh in WebGL, positions are transformed to the Earth-Centered Earth-Fixed (ECEF) frame using Greenwich Mean Sidereal Time ($\text{GMST}$):
+\begin{equation}
+    \vec{r}_{\text{ECEF}}(t) = \mathbf{R}_z(\text{GMST}(t)) \, \vec{r}_{\text{TEME}}(t)
+\end{equation}
+where the rotation matrix is defined as:
+\begin{equation}
+    \mathbf{R}_z(\theta) = \begin{pmatrix}
+        \cos\theta & \sin\theta & 0 \\
+        -\sin\theta & \cos\theta & 0 \\
+        0 & 0 & 1
+    \end{pmatrix}
+\end{equation}
+
+\subsection{Collision Probability (Akella-Alfriend 2D Analytical)}
+The collision plane is defined perpendicular to the relative velocity vector at Time of Closest Approach (TCA):
+\begin{equation}
+    \hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|}, \qquad \hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|}, \qquad \hat{e}_y = \hat{e}_z \times \hat{e}_x
+\end{equation}
+Position covariances in the Radial-Transverse-Normal (RTN) frame are rotated to ECI:
+\begin{equation}
+    \mathbf{C}_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)
+\end{equation}
+and projected onto the 2D collision plane to form the $2\times2$ encounter covariance $\mathbf{C}_e$. The probability of collision $P_c$ is:
+\begin{equation}
+    P_c = \frac{R_{\text{combined}}^2}{2\sqrt{\det(\mathbf{C}_e)}} \exp\left( -\frac{1}{2} \vec{r}_p^T \mathbf{C}_e^{-1} \vec{r}_p \right)
+\end{equation}
+where $R_{\text{combined}}$ is the combined hard-body radius (default 15 meters) and $\vec{r}_p = [x_p, y_p]^T$ is the projected miss position.
+
+\subsection{Clohessy-Wiltshire Relative-Motion Maneuver Solver}
+Relative motion in a circular orbit of mean motion $n = \sqrt{GM/a^3}$ is modeled via the Clohessy-Wiltshire equations:
+\begin{align}
+    x(\Delta t) &= \frac{\Delta v_R}{n}\sin(n\Delta t) + \frac{2\Delta v_T}{n}\bigl(1 - \cos(n\Delta t)\bigr) \\
+    y(\Delta t) &= \frac{2\Delta v_R}{n}\bigl(\cos(n\Delta t) - 1\bigr) + \frac{\Delta v_T}{n}\bigl(4\sin(n\Delta t) - 3n\Delta t\bigr) \\
+    z(\Delta t) &= \frac{\Delta v_N}{n}\sin(n\Delta t)
+\end{align}
+where $\Delta v_R$, $\Delta v_T$, $\Delta v_N$ are the burn impulse components in the Hill frame, and $\Delta t = t_{\text{TCA}} - t_{\text{burn}}$. Evasive maneuvers are target-solved using the transverse burn ratio:
+\begin{equation}
+    \Delta v_T \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{2 \Delta t} \quad (\text{m/s})
+\end{equation}
+
+\subsection{Tsiolkovsky Rocket Equation}
+Propellant consumption is calculated using:
+\begin{equation}
+    m_{\text{prop}} = m_0 \left( 1 - \exp\left( -\frac{\Delta V}{I_{\text{sp}} g_0} \right) \right)
+\end{equation}
+where $m_0$ is the wet spacecraft mass (default 500 kg), $I_{\text{sp}}$ is the specific impulse (default 220 seconds), and $g_0 = 9.80665 \text{ m/s}^2$.
+
+\section{Frontend-Backend Contract}
+To ensure complete physical accuracy, all telemetry rendered in the user interface originates directly from the backend calculation endpoints. The contracts are maintained via explicit TypeScript models:
+
+\begin{lstlisting}[language=TypeScript, caption={Backend Schema Interfaces}]
+export interface BackendManeuverOption {
+  option_id: string;
+  label: string; // 'small burn', 'medium burn', 'large burn'
+  delta_v_ms: number;
+  fuel_cost_kg: number;
+  resulting_min_distance_km: number;
+  cw_divergence_flag: boolean;
+  secondary_conjunction_warning: string | null;
+}
+\end{lstlisting}
+
+\subsection{Operational Mode Features}
+\begin{itemize}
+    \item \textbf{Disqualification Rendering:} Burn options resulting in secondary conjunctions or containing $P_c \geq 1\times 10^{-4}$ display a zero composite score and are greyed out in the interface.
+    \item \textbf{CW Divergence Flags:} Displays warning prompts when linear CW targets diverge from full SGP4 predictions by $>10\%$.
+    \item \textbf{Developer Audit Mode:} Introduces a toggle displaying the exact backend Pydantic field source path on hovering over metrics (e.g. \texttt{backend: chosen\_option.delta\_v\_ms}).
+\end{itemize}
+
+\section{Verification and Test Results}
+A rigorous automated testing suite verifies axis/frame alignment, scale consistency, closed orbital trajectories, and data contract payloads:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lllc}
+\toprule
+\textbf{Test ID} & \textbf{Validation Metric} & \textbf{Expected Value} & \textbf{Status} \\
+\midrule
+Check 1 & ISS ECEF Frame Transformation & Coordinates within $\pm 0.1$ km & PASS \\
+Check 2 & WGS-84 Scale Consistency & $6.371$ units vs $6378.137$ km & PASS \\
+Check 3 & Earth Rotation Alignment & Best offset error $< 1.0^{\circ}$ & PASS \\
+Check 4 & Orbit Trajectory Closure & TEME closure distance $< 0.05$ units & PASS \\
+Check 5 & TCA Position / Danger Zone & Center aligned at closest approach & PASS \\
+Pillar 3/4 & Maneuver Calculation Proxy & Matches FastAPI models field-for-field & PASS \\
+Pillar 5 & ECEF Coordinates Sampling & Sample points match backend visualizer & PASS \\
+\bottomrule
+\end{tabular}
+\caption{OrbitGuard Physical and Integration Verification Results}
+\label{tab:results}
+\end{table}
+
+\end{document}
