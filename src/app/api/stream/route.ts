@@ -1,16 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { parseCatalog, FALLBACK_ACTIVE_TLES, FALLBACK_DEBRIS_TLES } from "@/lib/celestrak";
+import { propagateTLE, propagateTLEToGeodetic } from "@/lib/sgp4-propagator";
 import { calculateOrbitalPeriod } from "@/lib/orbital-physics";
-import { ConjunctionEvent } from "@/types";
+import { Satellite, ConjunctionEvent } from "@/types";
+import fs from "fs";
 
 export const dynamic = "force-dynamic";
+
+const BACKEND_CACHE = "/Users/abhimanraj/ORBIT-GUARD-NEW/backend/data/tle_cache_active.json";
+
+function inferOwner(name: string): string {
+  const n = name.toUpperCase();
+  if (n.includes("STARLINK")) return "SpaceX";
+  if (n.includes("ONEWEB")) return "OneWeb";
+  if (n.includes("ISS")) return "NASA/Roscosmos";
+  if (n.includes("NOAA")) return "NOAA";
+  if (n.includes("FENGYUN")) return "CNSA";
+  if (n.includes("COSMOS")) return "Roscosmos";
+  return "Unknown";
+}
+
+function formatExponent(num: number) {
+  const expStr = num.toExponential(2);
+  const [coeff, exp] = expStr.split("e");
+  const expNum = parseInt(exp, 10);
+  const superscriptMap: Record<string, string> = {
+    "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹"
+  };
+  const expSuperscript = String(expNum).split("").map(c => superscriptMap[c] || c).join("");
+  return `${coeff} × 10${expSuperscript}`;
+}
+
+async function fetchAlerts() {
+  try {
+    const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.error("Stream SSE failed to fetch alerts from backend:", e);
+  }
+  return [];
+}
 
 export async function GET(request: NextRequest) {
   const responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
 
-  // Helper to send SSE event formatted properly
   const sendEvent = (type: string, data: any) => {
     try {
       const sseMessage = `event: data_update\ndata: ${JSON.stringify({ type, payload: data })}\n\n`;
@@ -20,120 +55,173 @@ export async function GET(request: NextRequest) {
     }
   };
 
-  // On connection: send initial state immediately
-  sendEvent("satellite_update", db.getSatellites());
-  
-  const events = db.getConjunctionEvents();
-  const redAlerts = events.filter((e) => e.status === "active" && e.riskLevel === "red");
+  // 1. Initial TLE fetch and mapping
+  const now = new Date();
+  let rawTLEs: Array<{ name: string; norad_id: string; line1: string; line2: string }> = [];
+  if (fs.existsSync(BACKEND_CACHE)) {
+    try {
+      const cached = JSON.parse(fs.readFileSync(BACKEND_CACHE, "utf-8"));
+      rawTLEs = cached.satellites || [];
+    } catch (e) {}
+  }
+
+  const parsedActive = parseCatalog(FALLBACK_ACTIVE_TLES);
+  const parsedDebris = parseCatalog(FALLBACK_DEBRIS_TLES);
+  const fallbackMap = new Map<number, any>();
+  if (rawTLEs.length === 0) {
+    parsedActive.forEach(t => fallbackMap.set(t.noradId, { name: t.name, line1: t.line1, line2: t.line2, type: "satellite" }));
+    parsedDebris.forEach(t => fallbackMap.set(t.noradId, { name: t.name, line1: t.line1, line2: t.line2, type: "debris" }));
+  }
+
+  const satellites: Satellite[] = [];
+  let backendAlerts = await fetchAlerts();
+
+  if (rawTLEs.length > 0) {
+    const conjunctionNoradIds = new Set<string>();
+    backendAlerts.forEach((a: any) => {
+      conjunctionNoradIds.add(a.protected_asset_id);
+      conjunctionNoradIds.add(a.candidate_id);
+    });
+
+    const processedSats = rawTLEs.filter(s => conjunctionNoradIds.has(s.norad_id) || Math.random() < 0.05).slice(0, 300);
+
+    for (const t of processedSats) {
+      const noradId = parseInt(t.norad_id, 10);
+      const name = t.name.trim();
+      const isDebris = name.includes("DEBRIS") || name.includes("FRAGMENT") || name.includes("R/B") || name.includes("ROCKET");
+      const type = isDebris ? "debris" : "satellite";
+      const id = `${type === "satellite" ? "SAT" : "DEBRIS"}-${noradId}`;
+
+      const geodetic = propagateTLEToGeodetic(t.line1, t.line2, now);
+      const state = propagateTLE(t.line1, t.line2, now);
+      if (!geodetic || !state) continue;
+
+      const alt = geodetic.altitude;
+      const semiMajorAxis = 6378.1 + alt;
+      const eccentricity = 0.001;
+
+      satellites.push({
+        id,
+        name,
+        noradId,
+        objectType: type,
+        owner: type === "satellite" ? inferOwner(name) : "Debris",
+        altitude: parseFloat(alt.toFixed(2)),
+        inclination: parseFloat(t.line2.substring(8, 16).trim()) || 0,
+        eccentricity,
+        period: 90,
+        velocity: 7.5,
+        longitude: geodetic.longitude,
+        latitude: geodetic.latitude,
+        semiMajorAxis: parseFloat(semiMajorAxis.toFixed(2)),
+        apogee: parseFloat((6378.1 + alt).toFixed(2)),
+        perigee: parseFloat((6378.1 + alt).toFixed(2)),
+        riskLevel: "green",
+        activeConjunctions: 0,
+        tleEpoch: now.toISOString(),
+        lastUpdated: now.toISOString(),
+        tleLine1: t.line1,
+        tleLine2: t.line2,
+        estimatedMassKg: 500,
+        fuelRemainingPct: 100
+      });
+    }
+  }
+
+  // Initial updates send
+  sendEvent("satellite_update", satellites);
+
+  const redAlerts = backendAlerts.filter((e: any) => e.risk_score > 75 && e.approval_status === "pending");
   sendEvent("status_update", {
     status: redAlerts.length > 0 ? "critical" : "nominal",
     activeAlerts: redAlerts.length,
     lastDataUpdate: new Date().toISOString()
   });
 
-  // Run update loop every 30 seconds
-  const intervalId = setInterval(() => {
+  // Track last known status and lifecycle length for each candidate alert
+  const knownEventsMap = new Map<string, { status: string; lifecycleLength: number }>();
+  backendAlerts.forEach((a: any) => {
+    knownEventsMap.set(a.candidate_id, {
+      status: a.approval_status === "approved" ? "resolved" : "active",
+      lifecycleLength: a.lifecycle ? a.lifecycle.length : 1
+    });
+  });
+
+  // Run update loop every 5 seconds for rapid real-time updates
+  const intervalId = setInterval(async () => {
     try {
-      // 1. Orbital progression: update longitude for each satellite
-      const satellites = db.getSatellites();
+      // 1. Orbital progression: update longitude
       satellites.forEach((sat) => {
         const period = calculateOrbitalPeriod(sat.altitude);
-        const deltaLon = (0.5 / period) * 360; // 30 sec = 0.5 min
+        const deltaLon = (0.0833 / period) * 360; // 5 sec = 0.0833 min
         sat.longitude = parseFloat(((sat.longitude + deltaLon) % 360).toFixed(4));
         sat.lastUpdated = new Date().toISOString();
       });
       sendEvent("satellite_update", satellites);
 
-      // 2. Conjunction detection (5% random chance per update)
-      if (Math.random() < 0.05) {
-        const activeSats = satellites.filter((s) => s.objectType === "satellite" && s.riskLevel !== "red");
-        if (activeSats.length > 0) {
-          const targetSat = activeSats[Math.floor(Math.random() * activeSats.length)];
-          
-          const idNum = Math.floor(10000 + Math.random() * 90000);
-          const debrisId = `DEBRIS-${idNum}`;
-          const debrisName = `DEBRIS-${idNum} FRAGMENT`;
+      // 2. Poll conjunctions from backend
+      const latestAlerts = await fetchAlerts();
+      latestAlerts.forEach((alert: any) => {
+        const isDebris = alert.candidate_name.includes("DEBRIS") || alert.candidate_name.includes("FRAGMENT") || alert.candidate_name.includes("R/B") || alert.candidate_name.includes("ROCKET");
+        const primaryId = `SAT-${alert.protected_asset_id}`;
+        const secondaryId = `${isDebris ? "DEBRIS" : "SAT"}-${alert.candidate_id}`;
+        const pc = alert.risk_score > 75 
+          ? 1e-4 + (alert.risk_score - 75) * 5e-4 
+          : 1e-5 + alert.risk_score * 1.5e-6;
 
-          // Standard orbital elements
-          const alt = targetSat.altitude + (Math.random() * 2 - 1);
-          const sma = 6378.1 + alt;
-          
-          // Create dummy debris in DB
-          const newDebris = {
-            id: debrisId,
-            name: debrisName,
-            noradId: idNum,
-            objectType: "debris" as const,
-            owner: "Debris",
-            altitude: parseFloat(alt.toFixed(2)),
-            inclination: targetSat.inclination + parseFloat((Math.random() * 0.05 - 0.025).toFixed(4)),
-            eccentricity: 0.001,
-            period: targetSat.period,
-            velocity: targetSat.velocity,
-            longitude: (targetSat.longitude + 0.01) % 360,
-            latitude: targetSat.latitude,
-            semiMajorAxis: parseFloat(sma.toFixed(2)),
-            apogee: parseFloat((sma + 5).toFixed(2)),
-            perigee: parseFloat((sma - 5).toFixed(2)),
-            riskLevel: "yellow" as const,
-            activeConjunctions: 1,
-            tleEpoch: new Date().toISOString(),
-            lastUpdated: new Date().toISOString(),
-            estimatedMassKg: 10,
-            fuelRemainingPct: 0
-          };
-          
-          db.getSatellites().push(newDebris);
+        const conjEvent: ConjunctionEvent = {
+          id: `CONJ-${alert.protected_asset_id}-${alert.candidate_id}`,
+          primaryId,
+          primaryName: "ISS (ZARYA)",
+          secondaryId,
+          secondaryName: alert.candidate_name,
+          tca: alert.time_of_closest_approach,
+          missDistance: parseFloat(alert.min_distance_km.toFixed(3)),
+          missDistanceMeters: Math.round(alert.min_distance_km * 1000),
+          relativeVelocity: 11.24,
+          pc,
+          pcDisplay: formatExponent(pc),
+          riskLevel: alert.risk_score > 75 ? "red" : "yellow",
+          status: alert.approval_status === "approved" ? "resolved" : "active",
+          detectedAt: alert.created_at,
+          source: "computed",
+          lifecycle: alert.lifecycle || []
+        };
 
-          // Insert conjunction event
-          const eventId = `CONJ-${targetSat.noradId}-${idNum}`;
-          const rawPc = 0.000045 + Math.random() * 0.00005; // ~5e-5 to 1e-4
-          
-          const newEvent: ConjunctionEvent = {
-            id: eventId,
-            primaryId: targetSat.id,
-            primaryName: targetSat.name,
-            secondaryId: debrisId,
-            secondaryName: debrisName,
-            tca: new Date(Date.now() + 12 * 3600 * 1000 + Math.random() * 24 * 3600 * 1000).toISOString(),
-            missDistance: parseFloat((0.8 + Math.random() * 1.5).toFixed(3)),
-            missDistanceMeters: Math.round((0.8 + Math.random() * 1.5) * 1000),
-            relativeVelocity: parseFloat((10 + Math.random() * 5).toFixed(3)),
-            pc: rawPc,
-            pcDisplay: `${(rawPc * 1e5).toFixed(2)} × 10⁻⁵`,
-            riskLevel: "yellow",
-            status: "active",
-            detectedAt: new Date().toISOString(),
-            source: "computed"
-          };
-          
-          db.getConjunctionEvents().push(newEvent);
+        const existingState = knownEventsMap.get(alert.candidate_id);
 
-          // Update satellite risk level to warning (yellow)
-          targetSat.riskLevel = "yellow";
-          targetSat.activeConjunctions++;
-
-          // Log incident
-          db.addIncidentLog({
-            type: "conjunction",
-            satelliteId: targetSat.id,
-            conjunctionEventId: eventId,
-            action: "New conjunction detected",
-            outcome: `Potential conjunction with ${newEvent.secondaryName} detected. Pc is ${newEvent.pcDisplay} (warning level).`,
-            severity: "medium"
+        if (!existingState) {
+          // New conjunction detected
+          knownEventsMap.set(alert.candidate_id, {
+            status: conjEvent.status,
+            lifecycleLength: conjEvent.lifecycle ? conjEvent.lifecycle.length : 1
           });
 
-          // Emit new conjunction & trigger toast notification on client
-          sendEvent("new_conjunction", { event: newEvent, satellite: targetSat });
-          
-          // Emit updated satellite list immediately
-          sendEvent("satellite_update", db.getSatellites());
+          const satObj = satellites.find(s => s.noradId === parseInt(alert.protected_asset_id, 10));
+          if (satObj) {
+            satObj.riskLevel = alert.risk_score > 75 ? "red" : "yellow";
+            sendEvent("new_conjunction", { event: conjEvent, satellite: satObj });
+          }
+        } else {
+          // Existing conjunction: check for state/lifecycle updates
+          const currentStatus = conjEvent.status;
+          const currentLifecycleLength = conjEvent.lifecycle ? conjEvent.lifecycle.length : 1;
+
+          if (existingState.status !== currentStatus || existingState.lifecycleLength !== currentLifecycleLength) {
+            // Update tracking map
+            knownEventsMap.set(alert.candidate_id, {
+              status: currentStatus,
+              lifecycleLength: currentLifecycleLength
+            });
+
+            // Push real-time transition update
+            sendEvent("conjunction_update", conjEvent);
+          }
         }
-      }
+      });
 
       // 3. System status summary update
-      const allEvents = db.getConjunctionEvents();
-      const redAlertsUpdated = allEvents.filter((e) => e.status === "active" && e.riskLevel === "red");
+      const redAlertsUpdated = latestAlerts.filter((e: any) => e.risk_score > 75 && e.approval_status === "pending");
       sendEvent("status_update", {
         status: redAlertsUpdated.length > 0 ? "critical" : "nominal",
         activeAlerts: redAlertsUpdated.length,
@@ -143,9 +231,8 @@ export async function GET(request: NextRequest) {
     } catch (err) {
       console.error("Error in SSE loop execution:", err);
     }
-  }, 30000);
+  }, 5000);
 
-  // Close resources on abort
   request.signal.addEventListener("abort", () => {
     clearInterval(intervalId);
     try {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { parseCatalog, FALLBACK_ACTIVE_TLES, FALLBACK_DEBRIS_TLES } from "@/lib/celestrak";
 
 export const dynamic = "force-dynamic";
 
@@ -12,27 +12,61 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ satellites: [], events: [], logs: [] });
     }
 
-    // 1. Search satellites by name, owner, or NORAD ID
-    const satellites = db.getSatellites().filter(sat => 
+    // 1. Fetch active alerts from FastAPI backend
+    let backendAlerts: any[] = [];
+    try {
+      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      if (res.ok) {
+        backendAlerts = await res.json();
+      }
+    } catch (e) {
+      console.error("FastAPI backend is offline or unreachable:", e);
+    }
+
+    // 2. Filter satellites by query
+    const parsedActive = parseCatalog(FALLBACK_ACTIVE_TLES);
+    const parsedDebris = parseCatalog(FALLBACK_DEBRIS_TLES);
+    const allTLEs = [...parsedActive, ...parsedDebris];
+
+    const satellites = allTLEs.filter(sat => 
       sat.name.toLowerCase().includes(query) ||
-      sat.owner.toLowerCase().includes(query) ||
       sat.noradId.toString().includes(query)
-    ).slice(0, 3);
+    ).slice(0, 3).map(tle => {
+      const isDebris = tle.name.includes("DEBRIS") || tle.name.includes("FRAGMENT");
+      const type = isDebris ? "debris" : "satellite";
+      return {
+        id: `${type === "satellite" ? "SAT" : "DEBRIS"}-${tle.noradId}`,
+        name: tle.name,
+        noradId: tle.noradId,
+        objectType: type,
+        owner: isDebris ? "Debris" : "Unknown"
+      };
+    });
 
-    // 2. Search conjunction events by ID, secondary name, or primary ID
-    const events = db.getConjunctionEvents().filter(event => 
-      event.id.toLowerCase().includes(query) ||
-      event.secondaryName.toLowerCase().includes(query) ||
-      event.primaryId.toLowerCase().includes(query)
-    ).slice(0, 3);
+    // 3. Filter events by query
+    const events = backendAlerts.filter(event => 
+      event.candidate_id.toLowerCase().includes(query) ||
+      event.candidate_name.toLowerCase().includes(query) ||
+      event.protected_asset_id.toLowerCase().includes(query)
+    ).slice(0, 3).map(alert => {
+      const isDebris = alert.candidate_name.includes("DEBRIS");
+      const primaryId = `SAT-${alert.protected_asset_id}`;
+      const secondaryId = `${isDebris ? "DEBRIS" : "SAT"}-${alert.candidate_id}`;
 
-    // 3. Search incident logs by ID, action, outcome, or satellite ID
-    const logs = db.getIncidentLogs().filter(log => 
-      log.id.toLowerCase().includes(query) ||
-      log.action.toLowerCase().includes(query) ||
-      log.outcome.toLowerCase().includes(query) ||
-      (log.satelliteId && log.satelliteId.toLowerCase().includes(query))
-    ).slice(0, 3);
+      return {
+        id: `CONJ-${alert.protected_asset_id}-${alert.candidate_id}`,
+        primaryId,
+        primaryName: "ISS (ZARYA)",
+        secondaryId,
+        secondaryName: alert.candidate_name,
+        tca: alert.time_of_closest_approach,
+        missDistanceMeters: Math.round(alert.min_distance_km * 1000),
+        riskLevel: alert.risk_score > 75 ? "red" : "yellow"
+      };
+    });
+
+    // 4. Mock logs search (logs are not saved in backend db, but we can return empty or simple logs)
+    const logs: any[] = [];
 
     return NextResponse.json({ satellites, events, logs });
   } catch (error) {

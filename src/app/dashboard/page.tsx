@@ -19,6 +19,9 @@ import { StatusDot } from "@/components/ui/StatusDot";
 import { cn } from "@/lib/utils";
 import { Satellite, ConjunctionEvent } from "@/types";
 import { useOrbitStream } from "@/lib/hooks/useOrbitStream";
+import dynamic from "next/dynamic";
+
+const EarthView = dynamic(() => import("@/components/EarthView"), { ssr: false });
 
 export default function DashboardPage() {
   const { satellites, conjunctionEvents: conjunctions } = useOrbitStream();
@@ -27,6 +30,7 @@ export default function DashboardPage() {
 
   // Client-side interactions states
   const [selectedSatellite, setSelectedSatellite] = React.useState<Satellite | null>(null);
+  const [selectedConjunctionId, setSelectedConjunctionId] = React.useState<string | null>(null);
   const [dismissedConjunctionIds, setDismissedConjunctionIds] = React.useState<string[]>([]);
 
   const liveSelectedSatellite = selectedSatellite
@@ -206,203 +210,200 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* SECTION 2 — Double Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Left Column (60%) — Fleet Status */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
-              Fleet Status Telemetry
-            </h2>
-            <span className="font-data text-[10px] text-graphite">
-              ONLINE STATE REFRESH: NOMINAL
-            </span>
-          </div>
-
-          <div className="border border-iron rounded-[6px] bg-[#0c1520] divide-y divide-iron overflow-hidden">
-            {satellites.map((sat) => {
-              // Check if satellite has any active conjunction relative to it
-              const relativeConj = activeConjunctions.find(
-                (c) => c.primaryId === sat.id
-              );
-
-              return (
-                <div
-                  key={sat.id}
-                  onClick={() => setSelectedSatellite(sat)}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-iron/20 transition-all cursor-pointer group"
-                >
-                  <div className="flex items-start space-x-3.5 flex-1 min-w-0">
-                    {/* Status Dot with pulse on critical */}
-                    <StatusDot
-                      status={
-                        sat.riskLevel === "red"
-                          ? "critical"
-                          : sat.riskLevel === "yellow"
-                          ? "caution"
-                          : "monitoring"
-                      }
-                      ping={sat.riskLevel === "red"}
-                      className="mt-1"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-data text-[14px] font-bold text-bone truncate group-hover:text-orbit-cyan transition-colors">
-                          {sat.name}
-                        </span>
-                        <span className="bg-void/50 border border-iron text-[10px] text-ash px-1.5 py-0.5 rounded-[3px] uppercase tracking-wider">
-                          {sat.owner}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-3 text-[11px] text-ash mt-1 font-data">
-                        <span>ALT: {sat.altitude.toFixed(1)} km</span>
-                        <span className="text-graphite">|</span>
-                        <span>INC: {sat.inclination.toFixed(2)}°</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fuel gauges */}
-                  <div className="flex items-center space-x-6 min-w-[180px]">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between text-[10px] text-ash font-data mb-1">
-                        <span>FUEL</span>
-                        <span>{sat.fuelRemainingPct.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-void border border-iron rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full transition-all duration-300", getFuelColorClass(sat.fuelRemainingPct))}
-                          style={{ width: `${sat.fuelRemainingPct}%` }}
-                        />
-                      </div>
-                    </div>
-                    <Badge variant="monitoring" className="h-5 shrink-0 uppercase">
-                      {sat.objectType}
-                    </Badge>
-                  </div>
-
-                  {/* Warning tag if active conjunction exists */}
-                  {relativeConj && (
-                    <div className="shrink-0 flex items-center">
-                      <span className="bg-collision-red/10 border border-collision-red/30 text-collision-red font-display text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-[3px] flex items-center space-x-1.5" suppressHydrationWarning>
-                        <span className="h-1.5 w-1.5 rounded-full bg-collision-red animate-ping" />
-                        <span>⚠ Conjunction in {getTimeRemaining(relativeConj.tca)}</span>
-                      </span>
-                    </div>
-                  )}
-
-                  <ChevronRight
-                    className="h-4 w-4 text-graphite group-hover:text-bone transition-colors self-center hidden sm:block"
-                    strokeWidth={1.5}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Column (40%) — Active Threats */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
-              Active Hazard Conjunctions
-            </h2>
-            <span className="font-data text-[10px] text-graphite">
-              THREATS ACTIVE: {activeConjunctions.length}
-            </span>
-          </div>
-
+      {/* SECTION 2 — Split-Screen Dashboard Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[600px]">
+        {/* Left Panel (40%) — Active Threats & Fleet Status */}
+        <div className="lg:col-span-2 flex flex-col space-y-4 overflow-y-auto pr-1 h-full scrollbar-thin">
+          {/* Active Threats */}
           <div className="space-y-4">
-            {activeConjunctions.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
-                <StatusDot status="cleared" ping={false} className="mb-2" />
-                <span className="font-display text-[12px] font-bold text-ash uppercase tracking-wider">
-                  No Active Hazards
-                </span>
-                <span className="font-body text-[11px] text-graphite mt-1 max-w-xs">
-                  All orbital segments within monitored grids report clearance.
-                </span>
-              </Card>
-            ) : (
-              activeConjunctions.map((conj) => {
-                const isCritical = conj.riskLevel === "red";
-                const satellite = satellites.find((s) => s.id === conj.primaryId);
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
+                Active Hazard Conjunctions
+              </h2>
+              <span className="font-data text-[10px] text-graphite">
+                THREATS ACTIVE: {activeConjunctions.length}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {activeConjunctions.length === 0 ? (
+                <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
+                  <StatusDot status="cleared" ping={false} className="mb-2" />
+                  <span className="font-display text-[12px] font-bold text-ash uppercase tracking-wider">
+                    No Active Hazards
+                  </span>
+                  <span className="font-body text-[11px] text-graphite mt-1 max-w-xs">
+                    All orbital segments within monitored grids report clearance.
+                  </span>
+                </Card>
+              ) : (
+                activeConjunctions.map((conj) => {
+                  const isCritical = conj.riskLevel === "red";
+                  const satellite = satellites.find((s) => s.id === conj.primaryId);
+                  const isSelected = selectedConjunctionId === conj.id;
+
+                  return (
+                    <Card
+                      key={conj.id}
+                      accentStatus={isCritical ? "critical" : "caution"}
+                      className={cn("flex flex-col p-4 space-y-3 animate-slide-in cursor-pointer transition-all border", {
+                        "border-orbit-cyan/60 bg-graphite/40 shadow-[0_0_10px_rgba(0,186,226,0.15)]": isSelected,
+                        "border-transparent": !isSelected,
+                      })}
+                      onClick={() => {
+                        setSelectedConjunctionId(conj.id);
+                        if (satellite) {
+                          setSelectedSatellite(satellite);
+                        }
+                      }}
+                    >
+                      {/* Event Header details */}
+                      <div className="flex items-start justify-between border-b border-iron pb-2">
+                        <div>
+                          <span className="font-data text-[10px] text-graphite">ALERT ID: {conj.id}</span>
+                          <h3 className="font-data text-[13px] font-bold text-bone uppercase mt-0.5">
+                            {satellite?.name} vs {conj.secondaryName}
+                          </h3>
+                        </div>
+                        <Badge variant={isCritical ? "critical" : "caution"}>
+                          {conj.riskLevel}
+                        </Badge>
+                      </div>
+
+                      {/* TCA and metrics info */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
+                            TCA Countdown
+                          </span>
+                          <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
+                            {getTimeRemaining(conj.tca)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
+                            Miss Distance
+                          </span>
+                          <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
+                            {conj.missDistanceMeters.toLocaleString()} m
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
+                            Collision Probability
+                          </span>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <div className="flex-1 h-2 bg-void border border-iron rounded-full overflow-hidden">
+                              <div
+                                className={cn("h-full", isCritical ? "bg-collision-red" : "bg-threat-amber")}
+                                style={{ width: `${Math.min(conj.pc * 1000, 100)}%` }}
+                              />
+                            </div>
+                            <span className={cn("font-data text-[13px] font-bold shrink-0", isCritical ? "text-collision-red" : "text-threat-amber")}>
+                              {conj.pcDisplay}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex space-x-2 pt-2 border-t border-iron/50">
+                        <Link href={`/maneuvers?event=${conj.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="primary" className="w-full py-1.5 px-3">
+                            Plan Maneuver
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissConjunction(conj.id);
+                          }}
+                          className="py-1.5 px-3"
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Fleet Status Telemetry */}
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
+                Fleet Status Telemetry
+              </h2>
+            </div>
+
+            <div className="border border-iron rounded-[6px] bg-[#0c1520] divide-y divide-iron overflow-hidden">
+              {satellites.map((sat) => {
+                const relativeConj = activeConjunctions.find(
+                  (c) => c.primaryId === sat.id
+                );
 
                 return (
-                  <Card
-                    key={conj.id}
-                    accentStatus={isCritical ? "critical" : "caution"}
-                    className="flex flex-col p-4 space-y-3 animate-slide-in"
+                  <div
+                    key={sat.id}
+                    onClick={() => setSelectedSatellite(sat)}
+                    className="p-4 flex flex-col hover:bg-iron/20 transition-all cursor-pointer group"
                   >
-                    {/* Event Header details */}
-                    <div className="flex items-start justify-between border-b border-iron pb-2">
-                      <div>
-                        <span className="font-data text-[10px] text-graphite">ALERT ID: {conj.id}</span>
-                        <h3 className="font-data text-[13px] font-bold text-bone uppercase mt-0.5">
-                          {satellite?.name} vs {conj.secondaryName}
-                        </h3>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3.5 flex-1 min-w-0">
+                        <StatusDot
+                          status={
+                            sat.riskLevel === "red"
+                              ? "critical"
+                              : sat.riskLevel === "yellow"
+                              ? "caution"
+                              : "monitoring"
+                          }
+                          ping={sat.riskLevel === "red"}
+                          className="mt-1"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-data text-[14px] font-bold text-bone truncate group-hover:text-orbit-cyan transition-colors">
+                              {sat.name}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <Badge variant={isCritical ? "critical" : "caution"}>
-                        {conj.riskLevel}
+                      <Badge variant="monitoring" className="h-5 shrink-0 uppercase">
+                        {sat.objectType}
                       </Badge>
                     </div>
 
-                    {/* TCA and metrics info */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                          TCA Countdown
-                        </span>
-                        <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
-                          {getTimeRemaining(conj.tca)}
-                        </span>
+                    <div className="flex justify-between items-center mt-3 gap-4">
+                      <div className="flex items-center space-x-3 text-[11px] text-ash font-data">
+                        <span>ALT: {sat.altitude.toFixed(0)}km</span>
+                        <span className="text-graphite">|</span>
+                        <span>INC: {sat.inclination.toFixed(1)}°</span>
                       </div>
-                      <div>
-                        <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                          Miss Distance
-                        </span>
-                        <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
-                          {conj.missDistanceMeters.toLocaleString()} m
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                          Collision Probability
-                        </span>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className="flex-1 h-2 bg-void border border-iron rounded-full overflow-hidden">
-                            <div
-                              className={cn("h-full", isCritical ? "bg-collision-red" : "bg-threat-amber")}
-                              style={{ width: `${Math.min(conj.pc * 1000, 100)}%` }}
-                            />
-                          </div>
-                          <span className={cn("font-data text-[13px] font-bold shrink-0", isCritical ? "text-collision-red" : "text-threat-amber")}>
-                            {conj.pcDisplay}
-                          </span>
+
+                      <div className="flex items-center space-x-2 w-[100px]">
+                        <span className="font-data text-[10px] text-ash">FUEL {sat.fuelRemainingPct.toFixed(0)}%</span>
+                        <div className="flex-1 h-1 bg-void border border-iron rounded-full overflow-hidden">
+                          <div
+                            className={cn("h-full transition-all duration-300", getFuelColorClass(sat.fuelRemainingPct))}
+                            style={{ width: `${sat.fuelRemainingPct}%` }}
+                          />
                         </div>
                       </div>
                     </div>
-
-                    {/* Action buttons */}
-                    <div className="flex space-x-2 pt-2 border-t border-iron/50">
-                      <Link href={`/maneuvers?event=${conj.id}`} className="flex-1">
-                        <Button variant="primary" className="w-full py-1.5 px-3">
-                          View Maneuver
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        onClick={() => handleDismissConjunction(conj.id)}
-                        className="py-1.5 px-3"
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  </Card>
+                  </div>
                 );
-              })
-            )}
+              })}
+            </div>
           </div>
+        </div>
+
+        {/* Right Panel (60%) — 3D Earth Visualizer */}
+        <div className="lg:col-span-3 h-full relative overflow-hidden bg-abyss border border-iron rounded-2xl">
+          <EarthView selectedObject={liveSelectedSatellite?.id || null} compact={true} />
         </div>
       </div>
 

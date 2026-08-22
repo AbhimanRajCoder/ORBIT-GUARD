@@ -12,9 +12,13 @@ import {
   Radio, 
   AlertTriangle,
   CheckCircle,
-  Eye
+  Eye,
+  HelpCircle,
+  Loader2,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import LifecycleTimeline from "@/components/dashboard/LifecycleTimeline";
 
 type SortField = "primaryName" | "secondaryName" | "tca" | "missDistance" | "pc" | "riskLevel";
 type SortOrder = "asc" | "desc";
@@ -26,6 +30,53 @@ export default function ConjunctionsPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [sortField, setSortField] = React.useState<SortField>("pc");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
+  
+  // Refresh catalog states
+  const [refreshing, setRefreshing] = React.useState(false);
+  
+  // AI Explain states
+  const [explainingEventId, setExplainingEventId] = React.useState<string | null>(null);
+  const [briefingText, setBriefingText] = React.useState<string>("");
+  const [loadingBriefing, setLoadingBriefing] = React.useState<boolean>(false);
+
+  const handleRefreshCatalog = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/celestrak/sync", { method: "POST" });
+      if (res.ok) {
+        alert("TLE catalog synchronized and screening re-run completed.");
+      } else {
+        alert("Failed to synchronize catalog.");
+      }
+    } catch (e) {
+      alert("Error refreshing catalog TLEs.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleOpenExplain = async (eventId: string) => {
+    setExplainingEventId(eventId);
+    setLoadingBriefing(true);
+    setBriefingText("");
+    try {
+      const res = await fetch("/api/ai-briefing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conjunctionEventId: eventId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBriefingText(data.briefingText);
+      } else {
+        setBriefingText("Failed to retrieve situation explanation from the AI service.");
+      }
+    } catch (e) {
+      setBriefingText("An error occurred while connecting to the briefing service.");
+    } finally {
+      setLoadingBriefing(false);
+    }
+  };
 
   // Summary counts
   const stats = React.useMemo(() => {
@@ -95,6 +146,36 @@ export default function ConjunctionsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/5 pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Radio className="h-5 w-5 text-orbit-cyan" strokeWidth={1.5} />
+            <span className="font-mono text-[11px] font-medium tracking-[0.1820em] uppercase text-ash">
+              Conjunction Screening Database
+            </span>
+          </div>
+          <h1 className="font-display text-[44px] font-light text-cloud leading-none">
+            Orbital <span className="italic font-light">Screening</span>
+          </h1>
+        </div>
+
+        <button
+          onClick={handleRefreshCatalog}
+          disabled={refreshing}
+          className="self-start sm:self-center px-5 py-2.5 bg-pure text-void hover:bg-cloud disabled:opacity-50 transition-all rounded-lg font-sans text-[14px] font-medium flex items-center space-x-2 active:scale-95 cursor-pointer"
+        >
+          {refreshing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-void" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <span>Refresh TLE Catalog →</span>
+          )}
+        </button>
+      </div>
+
       {/* Summary Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-[#0b101f]/90 border border-space-border/60 p-4 rounded-[6px] relative overflow-hidden flex flex-col justify-between h-24 shadow-lg select-none">
@@ -322,6 +403,13 @@ export default function ConjunctionsPage() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleOpenExplain(event.id)}
+                            className="p-1.5 rounded-[4px] border border-orbit-cyan/35 text-orbit-cyan hover:bg-orbit-cyan/15 hover:border-orbit-cyan transition-colors cursor-pointer"
+                            title="AI Explain Conjunction"
+                          >
+                            <HelpCircle className="h-3.5 w-3.5" />
+                          </button>
                           <Link
                             href={`/map?event=${event.id}`}
                             className="p-1.5 rounded-[4px] border border-orbit-cyan/35 text-orbit-cyan hover:bg-orbit-cyan/15 hover:border-orbit-cyan transition-colors"
@@ -352,6 +440,78 @@ export default function ConjunctionsPage() {
           </div>
         )}
       </div>
+
+      {/* AI Explain Modal */}
+      {explainingEventId && (() => {
+        const explainingEvent = conjunctionEvents.find((e) => e.id === explainingEventId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/60 backdrop-blur-sm">
+            <div 
+              onClick={() => setExplainingEventId(null)}
+              className="absolute inset-0"
+            />
+            
+            <div className="relative bg-graphite border border-white/10 w-full max-w-4xl rounded-2xl p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center space-x-2">
+                  <Radio className="h-4 w-4 text-orbit-cyan animate-pulse" />
+                  <span className="font-mono text-[10px] text-ash uppercase tracking-wider">
+                    AI Conjunction analysis & Lifecycle (ID: {explainingEventId})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setExplainingEventId(null)}
+                  className="p-1 border border-white/10 hover:border-white/20 hover:bg-white/5 text-ash hover:text-bone rounded cursor-pointer transition-all"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Two-Column Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[250px]">
+                {/* Left Column: AI Briefing */}
+                <div className="flex flex-col space-y-3">
+                  <h4 className="text-[11px] font-display font-bold text-ash uppercase tracking-wider">
+                    AI Risk Briefing
+                  </h4>
+                  <div className="flex-1 overflow-y-auto max-h-[350px] pr-1">
+                    {loadingBriefing ? (
+                      <div className="flex flex-col items-center justify-center space-y-2 py-12">
+                        <Loader2 className="h-6 w-6 animate-spin text-orbit-cyan" />
+                        <span className="font-mono text-[10px] text-ash uppercase tracking-widest">Generating analysis...</span>
+                      </div>
+                    ) : (
+                      <p className="font-sans text-[14px] font-light leading-relaxed text-cloud whitespace-pre-line">
+                        {briefingText}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Lifecycle Timeline */}
+                <div className="overflow-y-auto max-h-[350px] pr-1">
+                  {explainingEvent ? (
+                    <LifecycleTimeline event={explainingEvent} />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-ash/60 font-mono text-[11px]">
+                      Loading event metadata...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end border-t border-white/5 pt-3">
+                <button
+                  onClick={() => setExplainingEventId(null)}
+                  className="px-4 py-2 bg-pure text-void hover:bg-cloud rounded-lg font-sans text-[13px] font-semibold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -3,10 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import Link from 'next/link';
-import { db } from '@/lib/db';
+
 import { cn } from '@/lib/utils';
 import { useOrbitStream } from '@/lib/hooks/useOrbitStream';
 import { propagateTLE } from '@/lib/sgp4-propagator';
+import * as satellite from 'satellite.js';
 import {
   ChevronDown,
   X,
@@ -49,7 +50,35 @@ const ORBIT_SEGMENTS = 180;
 // ─────────────────────────────────────────────────────
 // EarthView Component
 // ─────────────────────────────────────────────────────
-const EarthView: React.FC = () => {
+interface TrajectoryPoint {
+  t: string;
+  position_ecef_km: [number, number, number];
+  position_teme_km?: [number, number, number];
+}
+
+interface EarthViewProps {
+  selectedObject?: string | null;
+  compact?: boolean;
+  protectedAssetTrajectory?: TrajectoryPoint[];
+  threatTrajectory?: TrajectoryPoint[];
+  maneuverTrajectory?: TrajectoryPoint[] | null;
+  tcaTime?: string;
+  tcaPosition?: [number, number, number];
+  safetyRadiusKm?: number;
+}
+
+const EarthView: React.FC<EarthViewProps> = ({ 
+  selectedObject: externalSelectedObject, 
+  compact = false,
+  protectedAssetTrajectory,
+  threatTrajectory,
+  maneuverTrajectory,
+  tcaTime,
+  tcaPosition,
+  safetyRadiusKm = 0.15
+}) => {
+  const isManeuverMode = !!protectedAssetTrajectory && protectedAssetTrajectory.length > 0;
+
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -69,6 +98,8 @@ const EarthView: React.FC = () => {
 
   const { satellites, conjunctionEvents } = useOrbitStream();
   const [maneuverPlans, setManeuverPlans] = useState<ManeuverPlan[]>([]);
+  const [visualizationData, setVisualizationData] = useState<any>(null);
+  const [loadingVisualization, setLoadingVisualization] = useState<boolean>(false);
 
   // ── UI State ──
   const [stats, setStats] = useState<Stats>({ total: 0, satellites: 0, largeDebris: 0, conjunctions: 0 });
@@ -79,6 +110,20 @@ const EarthView: React.FC = () => {
   const [showSmallDebris, setShowSmallDebris] = useState(true);
   const [animationPaused, setAnimationPaused] = useState(false);
   const [selectedObject, setSelectedObject] = useState<string | null>(null);
+
+  // Maneuver playback controls
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [simIndex, setSimIndex] = useState(0);
+  const simIndexRef = useRef(0);
+  const isPlayingRef = useRef(true);
+
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+
+  useEffect(() => {
+    if (externalSelectedObject !== undefined) {
+      setSelectedObject(externalSelectedObject);
+    }
+  }, [externalSelectedObject]);
   const [panelExpanded, setPanelExpanded] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -96,13 +141,92 @@ const EarthView: React.FC = () => {
     id: string; label: string; distanceKm: number; x: number; y: number; visible: boolean;
   }>>([]);
 
-  // ─── Load maneuvers from DB ───────────────────────
+  // ─── Load maneuvers from API ──────────────────────
   useEffect(() => {
-    setManeuverPlans(db.getManeuverPlans());
-  }, [selectedObject]);
+    async function loadManeuvers() {
+      try {
+        const res = await fetch('/api/maneuvers');
+        if (res.ok) {
+          const data = await res.json();
+          setManeuverPlans(data);
+        }
+      } catch (e) {
+        console.error('Failed to load maneuver plans from API:', e);
+      }
+    }
+    loadManeuvers();
+    const interval = setInterval(loadManeuvers, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ─── Load visualization data on selectedObject conjunction ─────
+  useEffect(() => {
+    if (!selectedObject) {
+      setVisualizationData(null);
+      return;
+    }
+    
+    const activeConj = conjunctionEvents.find(
+      (c) => (c.primaryId === selectedObject || c.secondaryId === selectedObject) && c.status === 'active'
+    );
+    
+    if (!activeConj) {
+      setVisualizationData(null);
+      return;
+    }
+    
+    const candidateId = activeConj.secondaryId.split('-')[1];
+    if (!candidateId) return;
+    
+    setLoadingVisualization(true);
+    fetch('/api/visualize?candidate_id=' + candidateId + '&window_hours=6&step_seconds=60')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Failed to load visualization data');
+      })
+      .then(data => {
+        setVisualizationData(data);
+      })
+      .catch(err => {
+        console.error(err);
+        setVisualizationData(null);
+      })
+      .finally(() => {
+        setLoadingVisualization(false);
+      });
+  }, [selectedObject, conjunctionEvents]);
+
+  // Debugging logs requested by user
+  useEffect(() => {
+    console.log("EarthView - satellites data:", satellites);
+  }, [satellites]);
+
+  useEffect(() => {
+    console.log("EarthView - visualization data:", visualizationData);
+  }, [visualizationData]);
 
   // ─── Mount flag ───────────────────────────────────
   useEffect(() => { setIsMounted(true); }, []);
+
+  // ─── Support URL query parameters for routing ───
+  useEffect(() => {
+    if (typeof window !== 'undefined' && satellites.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const satId = params.get('sat');
+      const eventId = params.get('event');
+      if (satId) {
+        const match = satellites.find(s => s.id === satId);
+        if (match) {
+          setSelectedObject(match.id);
+        }
+      } else if (eventId && conjunctionEvents.length > 0) {
+        const match = conjunctionEvents.find(c => c.id === eventId);
+        if (match) {
+          focusOnConjunctionEvent(match);
+        }
+      }
+    }
+  }, [satellites, conjunctionEvents]);
 
   // ─── Sync refs ────────────────────────────────────
   useEffect(() => { animationPausedRef.current = animationPaused; }, [animationPaused]);
@@ -111,11 +235,12 @@ const EarthView: React.FC = () => {
 
   // ─── Re-draw orbit lines when satellites or trajectoryVisible changes ───
   useEffect(() => {
+    if (isManeuverMode) return;
     if (sceneRef.current && satellites.length > 0) {
       updateSatelliteMeshes(sceneRef.current);
       drawAllOrbitTrajectories(sceneRef.current);
     }
-  }, [satellites]);
+  }, [satellites, isManeuverMode]);
 
   useEffect(() => {
     if (orbitLinesGroupRef.current) {
@@ -133,11 +258,11 @@ const EarthView: React.FC = () => {
   useEffect(() => {
     selectedObjectRef.current = selectedObject;
     if (selectedObject && sceneRef.current) {
-      drawSelectedOrbitRing(selectedObject, sceneRef.current);
+      drawSelectedOrbitRing(selectedObject, sceneRef.current, visualizationData);
     } else if (sceneRef.current) {
       clearDeflectionGroup();
     }
-  }, [selectedObject, maneuverPlans]);
+  }, [selectedObject, maneuverPlans, visualizationData]);
 
   // ─── Stats ────────────────────────────────────────
   useEffect(() => {
@@ -148,6 +273,170 @@ const EarthView: React.FC = () => {
       conjunctions: conjunctionEvents.filter(c => c.status === 'active').length,
     });
   }, [satellites, conjunctionEvents]);
+
+  // ─── Maneuver Visualization Mode Helpers & Effects ───
+  const initializeManeuverVisualization = (scene: THREE.Scene) => {
+    const toRemove = [
+      'protected-asset-mesh',
+      'threat-mesh',
+      'protected-path-line',
+      'threat-path-line',
+      'maneuver-path-line',
+      'tca-marker-mesh',
+      'safety-sphere-mesh'
+    ];
+    toRemove.forEach(name => {
+      const obj = scene.getObjectByName(name);
+      if (obj) {
+        scene.remove(obj);
+        if ((obj as any).geometry) (obj as any).geometry.dispose();
+        if ((obj as any).material) {
+          if (Array.isArray((obj as any).material)) {
+            (obj as any).material.forEach((m: any) => m.dispose());
+          } else {
+            (obj as any).material.dispose();
+          }
+        }
+      }
+    });
+
+    if (!protectedAssetTrajectory || !threatTrajectory) return;
+
+    // 1. Draw nominal protected asset path (solid cyan)
+    const pPts = protectedAssetTrajectory.map(pt => {
+      const [x, y, z] = pt.position_ecef_km;
+      return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+    });
+    if (pPts.length > 0) {
+      const geo = new THREE.BufferGeometry().setFromPoints(pPts);
+      const mat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 0.8 });
+      const line = new THREE.Line(geo, mat);
+      line.name = 'protected-path-line';
+      scene.add(line);
+    }
+
+    // 2. Draw nominal threat path (solid red)
+    const tPts = threatTrajectory.map(pt => {
+      const [x, y, z] = pt.position_ecef_km;
+      return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+    });
+    if (tPts.length > 0) {
+      const geo = new THREE.BufferGeometry().setFromPoints(tPts);
+      const mat = new THREE.LineBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.8 });
+      const line = new THREE.Line(geo, mat);
+      line.name = 'threat-path-line';
+      scene.add(line);
+    }
+
+    // 3. Draw post-burn maneuver path if available (dashed cyan)
+    if (maneuverTrajectory && maneuverTrajectory.length > 0) {
+      const mPts = maneuverTrajectory.map(pt => {
+        const [x, y, z] = pt.position_ecef_km;
+        return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+      });
+      const geo = new THREE.BufferGeometry().setFromPoints(mPts);
+      const mat = new THREE.LineDashedMaterial({
+        color: 0x00f0ff,
+        dashSize: 0.12,
+        gapSize: 0.06,
+        transparent: true,
+        opacity: 0.9
+      });
+      const line = new THREE.Line(geo, mat);
+      line.computeLineDistances();
+      line.name = 'maneuver-path-line';
+      scene.add(line);
+    }
+
+    // 4. Create TCA marker & safety sphere
+    if (tcaPosition) {
+      const [tx, ty, tz] = tcaPosition;
+      const tcaPos = new THREE.Vector3(tx * SCALE, tz * SCALE, ty * SCALE);
+
+      const markerGeo = new THREE.SphereGeometry(0.06, 16, 16);
+      const markerMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
+      const marker = new THREE.Mesh(markerGeo, markerMat);
+      marker.position.copy(tcaPos);
+      marker.name = 'tca-marker-mesh';
+      scene.add(marker);
+
+      const radius = (safetyRadiusKm || 0.15) * SCALE;
+      const safetyGeo = new THREE.SphereGeometry(Math.max(0.08, radius), 32, 32);
+      const safetyMat = new THREE.MeshBasicMaterial({
+        color: 0xff3355,
+        transparent: true,
+        opacity: 0.12,
+        wireframe: true
+      });
+      const safetySphere = new THREE.Mesh(safetyGeo, safetyMat);
+      safetySphere.position.copy(tcaPos);
+      safetySphere.name = 'safety-sphere-mesh';
+      scene.add(safetySphere);
+    }
+
+    // 5. Create meshes for the assets
+    const pMeshGeo = new THREE.BoxGeometry(0.12, 0.08, 0.16);
+    const pMeshMat = new THREE.MeshPhongMaterial({ color: 0x00f0ff, emissive: 0x004455, emissiveIntensity: 0.6 });
+    const pMesh = new THREE.Mesh(pMeshGeo, pMeshMat);
+    pMesh.name = 'protected-asset-mesh';
+    scene.add(pMesh);
+
+    const tMeshGeo = new THREE.OctahedronGeometry(0.08, 0);
+    const tMeshMat = new THREE.MeshPhongMaterial({ color: 0xff3355, emissive: 0x550011, emissiveIntensity: 0.6 });
+    const tMesh = new THREE.Mesh(tMeshGeo, tMeshMat);
+    tMesh.name = 'threat-mesh';
+    scene.add(tMesh);
+
+    // Initial camera focus on TCA
+    if (cameraRef.current && controlsRef.current) {
+      if (tcaPosition) {
+        const [tx, ty, tz] = tcaPosition;
+        const tcaPos = new THREE.Vector3(tx * SCALE, tz * SCALE, ty * SCALE);
+        controlsRef.current.target.copy(tcaPos);
+        cameraRef.current.position.set(tcaPos.x + 3.5, tcaPos.y + 2.0, tcaPos.z + 3.5);
+      } else if (pPts.length > 0) {
+        controlsRef.current.target.copy(pPts[0]);
+        cameraRef.current.position.set(pPts[0].x + 3.5, pPts[0].y + 2.0, pPts[0].z + 3.5);
+      }
+      controlsRef.current.update();
+    }
+  };
+
+  useEffect(() => {
+    if (isManeuverMode && sceneRef.current) {
+      initializeManeuverVisualization(sceneRef.current);
+    }
+  }, [protectedAssetTrajectory, threatTrajectory, tcaPosition, isManeuverMode]);
+
+  useEffect(() => {
+    if (isManeuverMode && sceneRef.current) {
+      const oldLine = sceneRef.current.getObjectByName('maneuver-path-line');
+      if (oldLine) {
+        sceneRef.current.remove(oldLine);
+        (oldLine as THREE.Line).geometry.dispose();
+        ((oldLine as THREE.Line).material as THREE.Material).dispose();
+      }
+
+      if (maneuverTrajectory && maneuverTrajectory.length > 0) {
+        const mPts = maneuverTrajectory.map(pt => {
+          const [x, y, z] = pt.position_ecef_km;
+          return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+        });
+        const geo = new THREE.BufferGeometry().setFromPoints(mPts);
+        const mat = new THREE.LineDashedMaterial({
+          color: 0x00f0ff,
+          dashSize: 0.12,
+          gapSize: 0.06,
+          transparent: true,
+          opacity: 0.9
+        });
+        const line = new THREE.Line(geo, mat);
+        line.computeLineDistances();
+        line.name = 'maneuver-path-line';
+        sceneRef.current.add(line);
+      }
+    }
+  }, [maneuverTrajectory, isManeuverMode]);
 
   // ═══════════════════════════════════════════════════
   // THREE.JS SCENE INITIALISATION
@@ -190,9 +479,13 @@ const EarthView: React.FC = () => {
     });
 
     // Scene contents
-    createStarfield(scene);
+    if (!isManeuverMode) {
+      createStarfield(scene);
+    }
     createEarth(scene);
-    createSmallDebrisCloud(scene);
+    if (!isManeuverMode) {
+      createSmallDebrisCloud(scene);
+    }
     setupLighting(scene);
 
     // Groups
@@ -211,7 +504,9 @@ const EarthView: React.FC = () => {
     scene.add(deflGroup);
     deflectionGroupRef.current = deflGroup;
 
-    if (satellites.length > 0) {
+    if (isManeuverMode) {
+      initializeManeuverVisualization(scene);
+    } else if (satellites.length > 0) {
       updateSatelliteMeshes(scene);
       drawAllOrbitTrajectories(scene);
     }
@@ -219,32 +514,47 @@ const EarthView: React.FC = () => {
     // Animation loop
     let lastTime = Date.now();
     let dashOffset = 0;
-
+ 
     const animate = () => {
       animationIdRef.current = requestAnimationFrame(animate);
-
+ 
       if (!animationPausedRef.current) {
         const delta = (Date.now() - lastTime) / 1000;
-        timeOffsetRef.current = (timeOffsetRef.current + delta * 0.5) % 72;
-        if (sliderRef.current) sliderRef.current.value = timeOffsetRef.current.toString();
-        if (timeTextRef.current) timeTextRef.current.textContent = `+${timeOffsetRef.current.toFixed(1)}h`;
+        if (isManeuverMode && protectedAssetTrajectory) {
+          const ptsLength = protectedAssetTrajectory.length;
+          if (ptsLength > 0 && isPlayingRef.current) {
+            const speed = 15; // points per second
+            simIndexRef.current = (simIndexRef.current + delta * speed) % ptsLength;
+            setSimIndex(Math.floor(simIndexRef.current));
+          }
+        } else {
+          timeOffsetRef.current = (timeOffsetRef.current + delta * 0.5) % 72;
+          if (sliderRef.current) sliderRef.current.value = timeOffsetRef.current.toString();
+          if (timeTextRef.current) timeTextRef.current.textContent = `+${timeOffsetRef.current.toFixed(1)}h`;
+        }
         dashOffset += delta * 0.3;
       }
       lastTime = Date.now();
-
+ 
       const simTime = new Date(Date.now() + timeOffsetRef.current * 3600 * 1000);
-
-      // Earth & clouds rotate
+ 
+      // Earth & clouds rotate based on simulation GMST (Pillar 5 Physics Check)
       const earth = scene.getObjectByName('earth');
-      if (earth) earth.rotation.y += 0.00018;
       const clouds = scene.getObjectByName('clouds');
-      if (clouds) clouds.rotation.y += 0.00025;
-
+      if (!isManeuverMode) {
+        const gmst = satellite.gstime(simTime);
+        if (earth) earth.rotation.y = gmst;
+        if (clouds) clouds.rotation.y = gmst * 1.02; // slow relative drift
+      } else {
+        if (earth) earth.rotation.y = 0; // Fixed Earth mesh in ECEF mode
+        if (clouds) clouds.rotation.y = 0;
+      }
+ 
       // Debris cloud slow drift
-      if (smallDebrisRef.current && debrisVisibleRef.current) {
+      if (!isManeuverMode && smallDebrisRef.current && debrisVisibleRef.current) {
         smallDebrisRef.current.rotation.y += 0.00005;
       }
-
+ 
       // Animate dashed hazard orbits by shifting material offset (shader trick)
       if (orbitLinesGroupRef.current) {
         orbitLinesGroupRef.current.children.forEach((child) => {
@@ -255,46 +565,90 @@ const EarthView: React.FC = () => {
           }
         });
       }
-
-      // Update satellite positions (SGP4)
-      objectsRef.current.forEach((obj) => {
-        const satData = satellites.find(s => s.id === obj.satId);
-        if (satData?.tleLine1 && satData?.tleLine2) {
-          const state = propagateTLE(satData.tleLine1, satData.tleLine2, simTime);
-          if (state) {
-            obj.mesh.position.set(
-              state.position.x * SCALE,
-              state.position.z * SCALE,
-              state.position.y * SCALE
-            );
-            // Rotate mesh slightly for visual life
-            obj.mesh.rotation.y += 0.01;
+ 
+      if (isManeuverMode && protectedAssetTrajectory && threatTrajectory) {
+        const ptsLength = protectedAssetTrajectory.length;
+        if (ptsLength > 0) {
+          const idx = Math.floor(simIndexRef.current) % ptsLength;
+          const pPoint = maneuverTrajectory && maneuverTrajectory[idx] ? maneuverTrajectory[idx] : protectedAssetTrajectory[idx];
+          const tPoint = threatTrajectory[idx];
+ 
+          const pMesh = scene.getObjectByName('protected-asset-mesh');
+          if (pMesh && pPoint) {
+            const [x, y, z] = pPoint.position_ecef_km;
+            pMesh.position.set(x * SCALE, z * SCALE, y * SCALE);
+            pMesh.rotation.y += 0.01;
+          }
+ 
+          const tMesh = scene.getObjectByName('threat-mesh');
+          if (tMesh && tPoint) {
+            const [x, y, z] = tPoint.position_ecef_km;
+            tMesh.position.set(x * SCALE, z * SCALE, y * SCALE);
+            tMesh.rotation.y += 0.01;
           }
         }
-      });
-
+ 
+        // Pulse TCA marker point
+        const tcaMarker = scene.getObjectByName('tca-marker-mesh');
+        if (tcaMarker) {
+          const pulse = 1.0 + 0.15 * Math.sin(Date.now() * 0.006);
+          tcaMarker.scale.set(pulse, pulse, pulse);
+        }
+ 
+        // Shift maneuver path line dashOffset to animate it
+        const mLine = scene.getObjectByName('maneuver-path-line');
+        if (mLine) {
+          const mat = (mLine as THREE.Line).material as THREE.LineDashedMaterial;
+          if (mat && mat.isLineDashedMaterial) {
+            (mat as any).dashOffset = -dashOffset;
+            mat.needsUpdate = true;
+          }
+        }
+      } else {
+        // Update satellite positions (SGP4)
+        objectsRef.current.forEach((obj) => {
+          const satData = satellites.find(s => s.id === obj.satId);
+          if (satData?.tleLine1 && satData?.tleLine2) {
+            const state = propagateTLE(satData.tleLine1, satData.tleLine2, simTime);
+            if (state) {
+              obj.mesh.position.set(
+                state.position.x * SCALE,
+                state.position.z * SCALE,
+                state.position.y * SCALE
+              );
+              // Rotate mesh slightly for visual life
+              obj.mesh.rotation.y += 0.01;
+            }
+          }
+        });
+      }
+ 
       // Update conjunction distance overlays
-      updateConjunctionOverlay(scene, camera, simTime);
-
+      if (!isManeuverMode) {
+        updateConjunctionOverlay(scene, camera, simTime);
+      }
+ 
       // Camera follow
-      const selId = selectedObjectRef.current;
-      if (selId) {
-        const tObj = scene.getObjectByName(selId);
-        if (tObj && controlsRef.current && cameraRef.current) {
-          controlsRef.current.target.lerp(tObj.position, 0.05);
-          const dist = cameraRef.current.position.distanceTo(tObj.position);
-          if (dist > 3.5) {
-            const dir = new THREE.Vector3().subVectors(cameraRef.current.position, tObj.position).normalize();
-            cameraRef.current.position.lerp(tObj.position.clone().add(dir.multiplyScalar(3.5)), 0.05);
+      if (!isManeuverMode) {
+        const selId = selectedObjectRef.current;
+        if (selId) {
+          const tObj = scene.getObjectByName(selId);
+          if (tObj && controlsRef.current && cameraRef.current) {
+            controlsRef.current.target.lerp(tObj.position, 0.05);
+            const dist = cameraRef.current.position.distanceTo(tObj.position);
+            if (dist > 3.5) {
+              const dir = new THREE.Vector3().subVectors(cameraRef.current.position, tObj.position).normalize();
+              cameraRef.current.position.lerp(tObj.position.clone().add(dir.multiplyScalar(3.5)), 0.05);
+            }
           }
-        }
-      } else if (controlsRef.current && cameraRef.current) {
-        if (isTransitioningZoomOut.current) {
-          const defPos = new THREE.Vector3(20, 12, 20);
-          cameraRef.current.position.lerp(defPos, 0.04);
-          controlsRef.current.target.lerp(new THREE.Vector3(0, 0, 0), 0.04);
-          if (cameraRef.current.position.distanceTo(defPos) < 0.3) {
-            isTransitioningZoomOut.current = false;
+        } else if (controlsRef.current && cameraRef.current) {
+          if (isTransitioningZoomOut.current) {
+            const defPos = new THREE.Vector3(20, 12, 20);
+            cameraRef.current.position.lerp(defPos, 0.04);
+            controlsRef.current.target.lerp(new THREE.Vector3(0, 0, 0), 0.04);
+            if (cameraRef.current.position.distanceTo(defPos) < 0.3) {
+              isTransitioningZoomOut.current = false;
+            }
           }
         }
       }
@@ -358,7 +712,7 @@ const EarthView: React.FC = () => {
   const createEarth = (scene: THREE.Scene) => {
     const loader = new THREE.TextureLoader();
     const earthTex = loader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
-    const earthBump = loader.load('https://threejs.org/examples/textures/planets/earth_bump_2048.jpg');
+    const earthBump = loader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
     const earthSpec = loader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
     const cloudsTex = loader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
 
@@ -366,8 +720,8 @@ const EarthView: React.FC = () => {
       new THREE.SphereGeometry(EARTH_RADIUS, 64, 64),
       new THREE.MeshPhongMaterial({
         map: earthTex,
-        bumpMap: earthBump,
-        bumpScale: 0.04,
+        normalMap: earthBump,
+        
         specularMap: earthSpec,
         specular: new THREE.Color(0x3a6a8a),
         shininess: 25,
@@ -575,18 +929,89 @@ const EarthView: React.FC = () => {
   };
 
   // ─── Selected object ring + deflection arc ────────
-  const drawSelectedOrbitRing = (satId: string, scene: THREE.Scene) => {
+  const drawSelectedOrbitRing = (satId: string, scene: THREE.Scene, visData?: any) => {
     clearDeflectionGroup();
     const group = deflectionGroupRef.current;
     if (!group) return;
 
+    // 1. If we have backend visualizationData, draw the real paths!
+    if (visData) {
+      // Draw nominal protected asset path (Cyan/Blue)
+      if (visData.protected_asset_path) {
+        const pts: THREE.Vector3[] = visData.protected_asset_path.map((pt: any) => {
+          const [x, y, z] = pt.position_teme_km || pt.position_ecef_km;
+          return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+        });
+        if (pts.length > 0) {
+          const mat = new THREE.LineBasicMaterial({ color: 0x00f0ff, transparent: true, opacity: 1.0 });
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+          line.name = 'selected-ring';
+          group.add(line);
+        }
+      }
+
+      // Draw nominal candidate threat path (Red/Orange)
+      if (visData.candidate_path) {
+        const pts: THREE.Vector3[] = visData.candidate_path.map((pt: any) => {
+          const [x, y, z] = pt.position_teme_km || pt.position_ecef_km;
+          return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+        });
+        if (pts.length > 0) {
+          const mat = new THREE.LineBasicMaterial({ color: 0xff3355, transparent: true, opacity: 1.0 });
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+          line.name = 'candidate-ring';
+          group.add(line);
+        }
+      }
+
+      // Draw post-maneuver path (Green dashed) if approved
+      const hasManeuver = maneuverPlans.some(p => p.satelliteId === satId && p.status === 'approved');
+      if (hasManeuver && visData.maneuver_path) {
+        const pts: THREE.Vector3[] = visData.maneuver_path.map((pt: any) => {
+          const [x, y, z] = pt.position_teme_km || pt.position_ecef_km;
+          return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+        });
+        if (pts.length > 0) {
+          const mat = new THREE.LineDashedMaterial({
+            color: 0x00ff88,
+            dashSize: 0.15,
+            gapSize: 0.07,
+            transparent: true,
+            opacity: 0.9,
+          });
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+          line.computeLineDistances();
+          line.name = 'deflection-arc';
+          group.add(line);
+        }
+      }
+      
+      // Draw Danger Zone sphere at closest approach
+      if (visData.danger_zone && visData.candidate_path && visData.candidate_path.length > 0) {
+        const tcaIdx = Math.floor(visData.candidate_path.length / 2);
+        const pt = visData.candidate_path[tcaIdx];
+        if (pt) {
+          const [x, y, z] = pt.position_teme_km || pt.position_ecef_km;
+          const pos = new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+          const geo = new THREE.SphereGeometry(Math.max(0.08, (visData.danger_zone.radius_km || 0.15) * SCALE), 16, 16);
+          const mat = new THREE.MeshBasicMaterial({ color: 0xff3355, transparent: true, opacity: 0.15, wireframe: true });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(pos);
+          mesh.name = 'danger-zone-sphere';
+          group.add(mesh);
+        }
+      }
+
+      return;
+    }
+
+    // 2. Fallback: Draw default local TLE nominal/deflection if no backend visData is fetched
     const sat = satellites.find(s => s.id === satId);
     if (!sat?.tleLine1 || !sat?.tleLine2) return;
 
     const tStart = new Date();
     const periodMs = sat.period * 60 * 1000;
 
-    // Primary orbit ring (bright highlight)
     const pts: THREE.Vector3[] = [];
     for (let i = 0; i <= ORBIT_SEGMENTS; i++) {
       const t = new Date(tStart.getTime() + (i / ORBIT_SEGMENTS) * periodMs);
@@ -601,7 +1026,6 @@ const EarthView: React.FC = () => {
     ring.name = 'selected-ring';
     group.add(ring);
 
-    // Deflected post-maneuver arc (green)
     const hasManeuver = maneuverPlans.some(p => p.satelliteId === satId && p.status === 'approved');
     if (hasManeuver) {
       const shiftX = 0.28 * Math.sin((sat.inclination * Math.PI) / 180);
@@ -775,293 +1199,395 @@ const EarthView: React.FC = () => {
   }
 
   return (
-    <div className="relative w-full h-[82vh] bg-void overflow-hidden rounded-[4px] border border-iron font-display">
+    <div className="relative w-full h-full bg-void overflow-hidden rounded-[4px] border border-iron font-display">
 
       {/* WebGL Canvas */}
       <div ref={mountRef} className="w-full h-full" />
 
-      {/* ── Live Separation Labels ───────────────────────── */}
-      <div className="absolute inset-0 pointer-events-none z-10">
-        {activeOverlayConjunctions.map(conj => conj.visible && (
-          <div
-            key={conj.id}
-            className="absolute -translate-x-1/2 -translate-y-1/2 bg-void/95 border border-collision-red/80 px-2.5 py-1 rounded-[2px] font-data text-[10px] text-bone flex flex-col space-y-0.5 shadow-[0_0_10px_rgba(255,51,85,0.25)]"
-            style={{ left: `${conj.x}px`, top: `${conj.y}px` }}
-          >
-            <span className="font-semibold text-ash">{conj.label}</span>
-            <span className="text-collision-red font-bold font-mono">
-              {conj.distanceKm < 1.0
-                ? `${(conj.distanceKm * 1000).toFixed(0)} m`
-                : `${conj.distanceKm.toFixed(3)} km`}
+      {/* ── MANEUVER VISUALIZATION MODE UI OVERLAYS ────── */}
+      {isManeuverMode ? (
+        <>
+          {/* Top Left info overlay */}
+          <div className="absolute top-3 left-4 bg-void/90 border border-white/10 px-3 py-2 rounded-lg z-20 font-data space-y-0.5 select-none pointer-events-none">
+            <div className="flex items-center space-x-1.5 text-orbit-cyan font-bold text-[11px] uppercase tracking-wider">
+              <span className="h-1.5 w-1.5 rounded-full bg-orbit-cyan animate-pulse" />
+              <span>3D Maneuver Planner</span>
+            </div>
+            <div className="text-[9px] text-ash font-mono uppercase">
+              Showing active threat encounter coordinates
+            </div>
+          </div>
+
+          {/* Bottom play/scrub bar overlay */}
+          {protectedAssetTrajectory && protectedAssetTrajectory.length > 0 && (
+            <div className="absolute bottom-4 left-4 right-4 bg-void/95 border border-white/10 p-2.5 rounded-lg z-20 flex items-center space-x-3 shadow-2xl max-w-[92%] sm:max-w-md md:max-w-lg">
+              <button
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="p-1.5 border border-white/10 hover:border-white/20 hover:bg-white/5 text-ash hover:text-bone rounded cursor-pointer transition-colors shrink-0"
+              >
+                {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={protectedAssetTrajectory.length - 1}
+                value={simIndex}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  simIndexRef.current = val;
+                  setSimIndex(val);
+                  setIsPlaying(false); // Pause on scrub
+                }}
+                className="flex-1 cursor-pointer accent-orbit-cyan h-1 bg-abyss rounded-lg appearance-none"
+              />
+              <div className="font-mono text-[10px] text-bone shrink-0 min-w-[95px] text-right">
+                {(() => {
+                  const pt = protectedAssetTrajectory[simIndex];
+                  if (!pt || !tcaTime) return "";
+                  const diffMs = new Date(pt.t).getTime() - new Date(tcaTime).getTime();
+                  const diffHrs = diffMs / 3600000;
+                  if (Math.abs(diffHrs) < 0.01) return "TCA";
+                  return `${diffHrs > 0 ? "+" : ""}${diffHrs.toFixed(2)}h from TCA`;
+                })()}
+              </div>
+              <button
+                onClick={() => {
+                  if (cameraRef.current && controlsRef.current && tcaPosition) {
+                    const [tx, ty, tz] = tcaPosition;
+                    const tcaPos = new THREE.Vector3(tx * SCALE, tz * SCALE, ty * SCALE);
+                    controlsRef.current.target.copy(tcaPos);
+                    cameraRef.current.position.set(tcaPos.x + 3.5, tcaPos.y + 2.0, tcaPos.z + 3.5);
+                    controlsRef.current.update();
+                  }
+                }}
+                className="p-1.5 border border-white/10 hover:border-white/20 hover:bg-white/5 text-ash hover:text-bone rounded cursor-pointer transition-colors text-[9px] uppercase font-mono tracking-wider shrink-0"
+                title="Recenter Camera on TCA"
+              >
+                Recenter
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Right Legend overlay */}
+          <div className="absolute bottom-20 right-4 bg-void/90 border border-white/10 p-3 rounded-lg font-mono text-[9px] z-20 space-y-1.5 pointer-events-none select-none animate-in fade-in duration-300">
+            <span className="text-[9px] font-bold text-graphite uppercase tracking-wider block border-b border-white/5 pb-1 mb-1">
+              Orbit Legend
             </span>
-          </div>
-        ))}
-      </div>
-
-      {/* ── TOP HEADER BAR ──────────────────────────────── */}
-      <div className="absolute top-0 left-0 right-0 h-9 bg-void/80 border-b border-iron/40 flex items-center px-4 z-20 space-x-6">
-        <div className="flex items-center space-x-2">
-          <Activity className="h-3.5 w-3.5 text-orbit-cyan animate-pulse" />
-          <span className="font-data text-[10.5px] text-bone font-bold tracking-widest uppercase">OrbitGuard — Live 3D Telemetry</span>
-        </div>
-        <div className="flex items-center space-x-4 ml-auto font-data text-[10px] text-ash">
-          <span className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-orbit-cyan inline-block" />
-            <span>{stats.satellites} Satellites</span>
-          </span>
-          <span className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-graphite inline-block" />
-            <span>{stats.largeDebris} Debris Objects</span>
-          </span>
-          <span className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-collision-red animate-ping inline-block" />
-            <span className="text-collision-red font-bold">{stats.conjunctions} Active Threats</span>
-          </span>
-        </div>
-      </div>
-
-      {/* ── LEFT PANEL: Conjunction Events ──────────────── */}
-      <div className={cn(
-        "absolute top-12 left-4 bg-void/90 border border-iron p-4 rounded-[4px] w-[260px] max-h-[78%] overflow-y-auto scrollbar-thin transition-all duration-300 z-20 space-y-4",
-        !panelExpanded ? "h-[44px] overflow-hidden" : ""
-      )}>
-        <div className="flex items-center justify-between border-b border-iron/60 pb-2">
-          <div className="flex items-center space-x-1.5 text-bone font-bold text-[12px] tracking-wide">
-            <ShieldAlert className="h-4 w-4 text-collision-red animate-pulse" />
-            <span>CONJUNCTION EVENTS</span>
-          </div>
-          <button
-            onClick={() => setPanelExpanded(!panelExpanded)}
-            className="p-1 border border-iron hover:border-graphite text-ash hover:text-bone rounded cursor-pointer"
-          >
-            <ChevronDown className={cn("h-3 w-3 transition-transform", panelExpanded ? "rotate-180" : "")} />
-          </button>
-        </div>
-
-        {panelExpanded && (
-          <div className="space-y-2">
-            {conjunctionEvents.filter(e => e.status === 'active').length === 0 ? (
-              <div className="text-[10.5px] text-graphite text-center italic py-4">No active threats.</div>
-            ) : (
-              conjunctionEvents.filter(e => e.status === 'active').map(event => (
-                <button
-                  key={event.id}
-                  onClick={() => focusOnConjunctionEvent(event)}
-                  className="w-full text-left p-2.5 rounded-[2px] bg-abyss border border-iron/80 hover:border-collision-red/50 transition-all flex flex-col space-y-1.5 cursor-pointer group"
-                >
-                  <div className="flex justify-between items-center border-b border-iron/40 pb-1">
-                    <span className="font-data text-[10.5px] text-bone font-bold group-hover:text-orbit-cyan">{event.id}</span>
-                    <span className={cn(
-                      "text-[8.5px] font-bold px-1.5 py-px rounded-[2px] border",
-                      event.riskLevel === 'red'
-                        ? "bg-collision-red/10 border-collision-red/35 text-collision-red"
-                        : "bg-threat-amber/10 border-threat-amber/35 text-threat-amber"
-                    )}>
-                      {event.riskLevel.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="font-data text-[9.5px] text-ash space-y-0.5">
-                    <div className="truncate text-bone">{event.primaryName} vs {event.secondaryName}</div>
-                    <div className="flex justify-between">
-                      <span>Miss Dist:</span>
-                      <span className="font-bold">{event.missDistanceMeters.toLocaleString()} m</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>TCA:</span>
-                      <span>{new Date(event.tca).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} UTC</span>
-                    </div>
-                  </div>
-                </button>
-              ))
+            <div className="flex items-center space-x-2">
+              <span className="w-5 h-[2px] bg-orbit-cyan inline-block shrink-0" />
+              <span className="text-ash">Protected Asset (Nominal)</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-5 h-[2px] bg-collision-red inline-block shrink-0" />
+              <span className="text-ash">Threat Candidate (Nominal)</span>
+            </div>
+            {maneuverTrajectory && (
+              <div className="flex items-center space-x-2">
+                <span className="w-5 h-[2px] inline-block shrink-0" style={{ backgroundImage: 'repeating-linear-gradient(90deg, #00f0ff 0, #00f0ff 3px, transparent 3px, transparent 6px)', height: '2px' }} />
+                <span className="text-ash">Post-Burn Trajectory (Dashed)</span>
+              </div>
             )}
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full border border-collision-red bg-collision-red/20 inline-block shrink-0 animate-pulse" />
+              <span className="text-ash">Danger Zone ({safetyRadiusKm ? safetyRadiusKm.toFixed(1) : "0.15"} km)</span>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* ── RIGHT PANEL: Controls ────────────────────────── */}
-      <div className="absolute top-12 right-4 bg-void/90 border border-iron p-4 rounded-[4px] w-[220px] z-20 space-y-4">
-        <div>
-          <span className="text-[9px] font-bold text-graphite uppercase tracking-wider block border-b border-iron/60 pb-1.5 mb-2.5">
-            Layer Filters
-          </span>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={toggleSatellites}
-              className={cn(
-                "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors",
-                showSatellites ? "bg-orbit-cyan/10 border-orbit-cyan/35 text-orbit-cyan" : "bg-abyss border-iron text-ash"
-              )}
-            >
-              Satellites
-            </button>
-            <button
-              onClick={toggleLargeDebris}
-              className={cn(
-                "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors",
-                showLargeDebris ? "bg-collision-red/10 border-collision-red/35 text-collision-red" : "bg-abyss border-iron text-ash"
-              )}
-            >
-              Large Debris
-            </button>
-            <button
-              onClick={toggleTrajectories}
-              className={cn(
-                "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors col-span-2",
-                trajectoriesVisible ? "bg-purple-600/10 border-purple-400/35 text-purple-300" : "bg-abyss border-iron text-ash"
-              )}
-            >
-              {trajectoriesVisible ? <><Eye className="h-3 w-3 inline mr-1" />Trajectories ON</> : <><EyeOff className="h-3 w-3 inline mr-1" />Trajectories OFF</>}
-            </button>
-            <button
-              onClick={() => setShowSmallDebris(v => !v)}
-              className={cn(
-                "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors col-span-2",
-                showSmallDebris ? "bg-threat-amber/10 border-threat-amber/35 text-threat-amber" : "bg-abyss border-iron text-ash"
-              )}
-            >
-              {showSmallDebris ? <><Layers className="h-3 w-3 inline mr-1" />Debris Cloud ON</> : <><Layers className="h-3 w-3 inline mr-1" />Debris Cloud OFF</>}
-            </button>
+        </>
+      ) : (
+        /* ── STANDARD CATALOG MODE UI OVERLAYS ────── */
+        <>
+          {/* Live Separation Labels */}
+          <div className="absolute inset-0 pointer-events-none z-10">
+            {activeOverlayConjunctions.map(conj => conj.visible && (
+              <div
+                key={conj.id}
+                className="absolute -translate-x-1/2 -translate-y-1/2 bg-void/95 border border-collision-red/80 px-2.5 py-1 rounded-[2px] font-data text-[10px] text-bone flex flex-col space-y-0.5 shadow-[0_0_10px_rgba(255,51,85,0.25)]"
+                style={{ left: `${conj.x}px`, top: `${conj.y}px` }}
+              >
+                <span className="font-semibold text-ash">{conj.label}</span>
+                <span className="text-collision-red font-bold font-mono">
+                  {conj.distanceKm < 1.0
+                    ? `${(conj.distanceKm * 1000).toFixed(0)} m`
+                    : `${conj.distanceKm.toFixed(3)} km`}
+                </span>
+              </div>
+            ))}
           </div>
-        </div>
 
-        {/* Timeline slider */}
-        <div className="space-y-1.5 border-t border-iron/50 pt-3">
-          <div className="flex justify-between items-center text-[10px] text-ash">
-            <span className="font-bold uppercase tracking-wider">Sim Timeline (+72h)</span>
-            <span ref={timeTextRef} className="font-data text-orbit-cyan font-bold">+0.0h</span>
-          </div>
-          <input
-            ref={sliderRef}
-            type="range" min={0} max={72} step={0.1} defaultValue={0}
-            onChange={(e) => { timeOffsetRef.current = parseFloat(e.target.value); }}
-            className="w-full cursor-pointer accent-orbit-cyan"
-          />
-        </div>
+          {/* TOP HEADER BAR */}
+          {!compact && (
+            <div className="absolute top-0 left-0 right-0 h-9 bg-void/80 border-b border-iron/40 flex items-center px-4 z-20 space-x-6">
+              <div className="flex items-center space-x-2">
+                <Activity className="h-3.5 w-3.5 text-orbit-cyan animate-pulse" />
+                <span className="font-data text-[10.5px] text-bone font-bold tracking-widest uppercase">OrbitGuard — Live 3D Telemetry</span>
+              </div>
+              <div className="flex items-center space-x-4 ml-auto font-data text-[10px] text-ash">
+                <span className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-orbit-cyan inline-block" />
+                  <span>{stats.satellites} Satellites</span>
+                </span>
+                <span className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-graphite inline-block" />
+                  <span>{stats.largeDebris} Debris Objects</span>
+                </span>
+                <span className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-collision-red animate-ping inline-block" />
+                  <span className="text-collision-red font-bold">{stats.conjunctions} Active Threats</span>
+                </span>
+              </div>
+            </div>
+          )}
 
-        {/* Pause/Play + Reset */}
-        <div className="flex gap-2 border-t border-iron/50 pt-3">
-          <button
-            onClick={() => setAnimationPaused(v => !v)}
-            className="flex-1 py-1.5 px-2 border border-iron hover:border-graphite text-ash hover:text-bone rounded-[2px] font-data text-[9px] uppercase tracking-wide cursor-pointer flex items-center justify-center space-x-1 transition-colors"
-          >
-            {animationPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-            <span>{animationPaused ? 'Resume' : 'Pause'}</span>
-          </button>
-          <button
-            onClick={resetView}
-            className="flex-1 py-1.5 px-2 border border-iron hover:border-graphite text-ash hover:text-bone rounded-[2px] font-data text-[9px] uppercase tracking-wide cursor-pointer flex items-center justify-center space-x-1 transition-colors"
-          >
-            <RotateCcw className="h-3 w-3" />
-            <span>Reset</span>
-          </button>
-        </div>
-      </div>
+          {/* LEFT PANEL: Conjunction Events */}
+          {!compact && (
+            <div className={cn(
+              "absolute top-12 left-4 bg-void/90 border border-iron p-4 rounded-[4px] w-[260px] max-h-[78%] overflow-y-auto scrollbar-thin transition-all duration-300 z-20 space-y-4",
+              !panelExpanded ? "h-[44px] overflow-hidden" : ""
+            )}>
+              <div className="flex items-center justify-between border-b border-iron/60 pb-2">
+                <div className="flex items-center space-x-1.5 text-bone font-bold text-[12px] tracking-wide">
+                  <ShieldAlert className="h-4 w-4 text-collision-red animate-pulse" />
+                  <span>CONJUNCTION EVENTS</span>
+                </div>
+                <button
+                  onClick={() => setPanelExpanded(!panelExpanded)}
+                  className="p-1 border border-iron hover:border-graphite text-ash hover:text-bone rounded cursor-pointer"
+                >
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", panelExpanded ? "rotate-180" : "")} />
+                </button>
+              </div>
 
-      {/* ── SELECTED OBJECT INSPECTOR ───────────────────── */}
-      {selectedObject && (
-        <div className="absolute bottom-4 left-4 bg-void/95 border border-iron p-4 rounded-[4px] w-[280px] z-20 space-y-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
-          {(() => {
-            const sat = satellites.find(s => s.id === selectedObject);
-            if (!sat) return <div className="text-[10px] text-ash font-data animate-pulse">Querying NORAD catalog...</div>;
+              {panelExpanded && (
+                <div className="space-y-2">
+                  {conjunctionEvents.filter(e => e.status === 'active').length === 0 ? (
+                    <div className="text-[10.5px] text-graphite text-center italic py-4">No active threats.</div>
+                  ) : (
+                    conjunctionEvents.filter(e => e.status === 'active').map(event => (
+                      <button
+                        key={event.id}
+                        onClick={() => focusOnConjunctionEvent(event)}
+                        className="w-full text-left p-2.5 rounded-[2px] bg-abyss border border-iron/80 hover:border-collision-red/50 transition-all flex flex-col space-y-1.5 cursor-pointer group"
+                      >
+                        <div className="flex justify-between items-center border-b border-iron/40 pb-1">
+                          <span className="font-data text-[10.5px] text-bone font-bold group-hover:text-orbit-cyan">{event.id}</span>
+                          <span className={cn(
+                            "text-[8.5px] font-bold px-1.5 py-px rounded-[2px] border",
+                            event.riskLevel === 'red'
+                              ? "bg-collision-red/10 border-collision-red/35 text-collision-red"
+                              : "bg-threat-amber/10 border-threat-amber/35 text-threat-amber"
+                          )}>
+                            {event.riskLevel.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="font-data text-[9.5px] text-ash space-y-0.5">
+                          <div className="truncate text-bone">{event.primaryName} vs {event.secondaryName}</div>
+                          <div className="flex justify-between">
+                            <span>Miss Dist:</span>
+                            <span className="font-bold">{event.missDistanceMeters.toLocaleString()} m</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>TCA:</span>
+                            <span>{new Date(event.tca).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} UTC</span>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
-            const isDebris = sat.objectType === 'debris';
-            const activeConj = conjunctionEvents.find(c => c.primaryId === sat.id && c.status === 'active');
-            const satManeuver = maneuverPlans.find(p => p.satelliteId === sat.id && p.status === 'approved');
-
-            return (
-              <div className="space-y-3">
-                <div className="flex justify-between items-start border-b border-iron/60 pb-1.5">
-                  <div>
-                    <h3 className="font-bold text-bone text-[13px]">{sat.name}</h3>
-                    <span className="font-data text-[10px] text-ash">NORAD #{sat.noradId}</span>
-                  </div>
+          {/* RIGHT PANEL: Controls */}
+          {!compact && (
+            <div className="absolute top-12 right-4 bg-void/90 border border-iron p-4 rounded-[4px] w-[220px] z-20 space-y-4">
+              <div>
+                <span className="text-[9px] font-bold text-graphite uppercase tracking-wider block border-b border-iron/60 pb-1.5 mb-2.5">
+                  Layer Filters
+                </span>
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
-                    onClick={() => { setSelectedObject(null); isTransitioningZoomOut.current = true; }}
-                    className="p-1 border border-iron hover:border-graphite text-ash hover:text-bone rounded cursor-pointer"
+                    onClick={toggleSatellites}
+                    className={cn(
+                      "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors",
+                      showSatellites ? "bg-orbit-cyan/10 border-orbit-cyan/35 text-orbit-cyan" : "bg-abyss border-iron text-ash"
+                    )}
                   >
-                    <X className="h-3 w-3" />
+                    Satellites
+                  </button>
+                  <button
+                    onClick={toggleLargeDebris}
+                    className={cn(
+                      "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors",
+                      showLargeDebris ? "bg-collision-red/10 border-collision-red/35 text-collision-red" : "bg-abyss border-iron text-ash"
+                    )}
+                  >
+                    Large Debris
+                  </button>
+                  <button
+                    onClick={toggleTrajectories}
+                    className={cn(
+                      "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors col-span-2",
+                      trajectoriesVisible ? "bg-purple-600/10 border-purple-400/35 text-purple-300" : "bg-abyss border-iron text-ash"
+                    )}
+                  >
+                    {trajectoriesVisible ? <><Eye className="h-3 w-3 inline mr-1" />Trajectories ON</> : <><EyeOff className="h-3 w-3 inline mr-1" />Trajectories OFF</>}
+                  </button>
+                  <button
+                    onClick={() => setShowSmallDebris(v => !v)}
+                    className={cn(
+                      "py-1.5 px-2 rounded-[2px] border font-data text-[9px] uppercase cursor-pointer text-center transition-colors col-span-2",
+                      showSmallDebris ? "bg-threat-amber/10 border-threat-amber/35 text-threat-amber" : "bg-abyss border-iron text-ash"
+                    )}
+                  >
+                    {showSmallDebris ? <><Layers className="h-3 w-3 inline mr-1" />Debris Cloud ON</> : <><Layers className="h-3 w-3 inline mr-1" />Debris Cloud OFF</>}
                   </button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-2 font-data text-[10px] text-ash">
-                  {[
-                    { label: 'TYPE', val: isDebris ? 'Space Debris' : 'Operational Sat' },
-                    { label: 'INCLINATION', val: `${sat.inclination.toFixed(2)}°` },
-                    { label: 'ALTITUDE', val: `${sat.altitude.toFixed(1)} km` },
-                    { label: 'FUEL', val: `${sat.fuelRemainingPct.toFixed(1)}%` },
-                    { label: 'PERIOD', val: `${sat.period.toFixed(1)} min` },
-                    { label: 'RISK LEVEL', val: sat.riskLevel.toUpperCase() },
-                  ].map(({ label, val }) => (
-                    <div key={label} className="bg-abyss border border-iron/40 p-1.5 rounded-[2px]">
-                      <span className="text-graphite text-[9px] block">{label}</span>
-                      <span className={cn("font-semibold", label === 'RISK LEVEL' && sat.riskLevel === 'red' ? 'text-collision-red' : 'text-bone')}>{val}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {satManeuver && (
-                  <div className="bg-cleared-green/5 border border-cleared-green/30 p-2 rounded-[2px] text-[10px]">
-                    <div className="font-bold text-cleared-green flex items-center space-x-1">
-                      <Zap className="h-3 w-3" /><span>APPROVED MANEUVER</span>
-                    </div>
-                    <p className="text-ash mt-0.5 font-data text-[9px]">
-                      Burn at {satManeuver.burnTime.slice(11, 19)} UTC · +{satManeuver.deltaV.toFixed(2)} m/s prograde
-                    </p>
-                  </div>
-                )}
-
-                {activeConj && (
-                  <div className="bg-collision-red/5 border border-collision-red/30 p-2 rounded-[2px] text-[10px] space-y-1">
-                    <span className="font-bold text-collision-red">⚠ CRITICAL CONJUNCTION</span>
-                    <div className="font-data text-[9.5px] text-ash space-y-0.5">
-                      <div>vs {activeConj.secondaryName}</div>
-                      <div>Miss Distance: {activeConj.missDistanceMeters.toLocaleString()} m</div>
-                      <div>Pc: {activeConj.pcDisplay}</div>
-                    </div>
-                  </div>
-                )}
-
-                <Link
-                  href={`/maneuvers?event=${activeConj ? activeConj.id : ''}`}
-                  className="w-full py-2 bg-orbit-cyan hover:bg-[#00c5dd] text-void font-bold text-[10.5px] uppercase tracking-wide text-center block rounded-[2px] transition-colors"
-                >
-                  Maneuver Simulator →
-                </Link>
               </div>
-            );
-          })()}
-        </div>
-      )}
 
-      {/* ── BOTTOM RIGHT LEGEND ──────────────────────────── */}
-      <div className="absolute bottom-4 right-4 bg-void/90 border border-iron p-3.5 rounded-[4px] font-mono text-[9px] z-20 space-y-2">
-        <span className="text-[9px] font-bold text-graphite uppercase tracking-wider block border-b border-iron/60 pb-1 mb-1">
-          Orbit Legend
-        </span>
-        {[
-          { color: '#00bae2', label: 'Nominal Trajectory', dashed: false },
-          { color: '#ff3355', label: 'Critical Hazard (animated)', dashed: true },
-          { color: '#ffb829', label: 'Caution Orbit (animated)', dashed: true },
-          { color: '#4a4e55', label: 'Debris Object Track', dashed: false },
-          { color: '#00ff88', label: 'Post-Burn Deflection', dashed: true },
-          { color: '#8e9096', label: 'Kessler Debris Cloud', dot: true },
-        ].map(({ color, label, dashed, dot }) => (
-          <div key={label} className="flex items-center space-x-2">
-            {dot
-              ? <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: color }} />
-              : <span
-                  className="w-5 h-px inline-block shrink-0"
-                  style={{
-                    backgroundColor: color,
-                    backgroundImage: dashed ? `repeating-linear-gradient(90deg, ${color} 0, ${color} 4px, transparent 4px, transparent 8px)` : 'none',
-                    height: '2px',
-                  }}
+              {/* Timeline slider */}
+              <div className="space-y-1.5 border-t border-iron/50 pt-3">
+                <div className="flex justify-between items-center text-[10px] text-ash">
+                  <span className="font-bold uppercase tracking-wider">Sim Timeline (+72h)</span>
+                  <span ref={timeTextRef} className="font-data text-orbit-cyan font-bold">+0.0h</span>
+                </div>
+                <input
+                  ref={sliderRef}
+                  type="range" min={0} max={72} step={0.1} defaultValue={0}
+                  onChange={(e) => { timeOffsetRef.current = parseFloat(e.target.value); }}
+                  className="w-full cursor-pointer accent-orbit-cyan"
                 />
-            }
-            <span className="text-ash">{label}</span>
-          </div>
-        ))}
-      </div>
+              </div>
+
+              {/* Pause/Play + Reset */}
+              <div className="flex gap-2 border-t border-iron/50 pt-3">
+                <button
+                  onClick={() => setAnimationPaused(v => !v)}
+                  className="flex-1 py-1.5 px-2 border border-iron hover:border-graphite text-ash hover:text-bone rounded-[2px] font-data text-[9px] uppercase tracking-wide cursor-pointer flex items-center justify-center space-x-1 transition-colors"
+                >
+                  {animationPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                  <span>{animationPaused ? 'Resume' : 'Pause'}</span>
+                </button>
+                <button
+                  onClick={resetView}
+                  className="flex-1 py-1.5 px-2 border border-iron hover:border-graphite text-ash hover:text-bone rounded-[2px] font-data text-[9px] uppercase tracking-wide cursor-pointer flex items-center justify-center space-x-1 transition-colors"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SELECTED OBJECT INSPECTOR */}
+          {!compact && selectedObject && (
+            <div className="absolute bottom-4 left-4 bg-void/95 border border-iron p-4 rounded-[4px] w-[280px] z-20 space-y-3 animate-in fade-in slide-in-from-bottom-5 duration-200">
+              {(() => {
+                const sat = satellites.find(s => s.id === selectedObject);
+                if (!sat) return <div className="text-[10px] text-ash font-data animate-pulse">Querying NORAD catalog...</div>;
+
+                const isDebris = sat.objectType === 'debris';
+                const activeConj = conjunctionEvents.find(c => c.primaryId === sat.id && c.status === 'active');
+                const satManeuver = maneuverPlans.find(p => p.satelliteId === sat.id && p.status === 'approved');
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start border-b border-iron/60 pb-1.5">
+                      <div>
+                        <h3 className="font-bold text-bone text-[13px]">{sat.name}</h3>
+                        <span className="font-data text-[10px] text-ash">NORAD #{sat.noradId}</span>
+                      </div>
+                      <button
+                        onClick={() => { setSelectedObject(null); isTransitioningZoomOut.current = true; }}
+                        className="p-1 border border-iron hover:border-graphite text-ash hover:text-bone rounded cursor-pointer"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 font-data text-[10px] text-ash">
+                      {[
+                        { label: 'TYPE', val: isDebris ? 'Space Debris' : 'Operational Sat' },
+                        { label: 'INCLINATION', val: `${sat.inclination.toFixed(2)}°` },
+                        { label: 'ALTITUDE', val: `${sat.altitude.toFixed(1)} km` },
+                        { label: 'FUEL', val: `${sat.fuelRemainingPct.toFixed(1)}%` },
+                        { label: 'PERIOD', val: `${sat.period.toFixed(1)} min` },
+                        { label: 'RISK LEVEL', val: sat.riskLevel.toUpperCase() },
+                      ].map(({ label, val }) => (
+                        <div key={label} className="bg-abyss border border-iron/40 p-1.5 rounded-[2px]">
+                          <span className="text-graphite text-[9px] block">{label}</span>
+                          <span className={cn("font-semibold", label === 'RISK LEVEL' && sat.riskLevel === 'red' ? 'text-collision-red' : 'text-bone')}>{val}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {satManeuver && (
+                      <div className="bg-cleared-green/5 border border-cleared-green/30 p-2 rounded-[2px] text-[10px]">
+                        <div className="font-bold text-cleared-green flex items-center space-x-1">
+                          <Zap className="h-3 w-3" /><span>APPROVED MANEUVER</span>
+                        </div>
+                        <p className="text-ash mt-0.5 font-data text-[9px]">
+                          Burn at {satManeuver.burnTime.slice(11, 19)} UTC · +{satManeuver.deltaV.toFixed(2)} m/s prograde
+                        </p>
+                      </div>
+                    )}
+
+                    {activeConj && (
+                      <div className="bg-collision-red/5 border border-collision-red/30 p-2 rounded-[2px] text-[10px] space-y-1">
+                        <span className="font-bold text-collision-red">⚠ CRITICAL CONJUNCTION</span>
+                        <div className="font-data text-[9.5px] text-ash space-y-0.5">
+                          <div>vs {activeConj.secondaryName}</div>
+                          <div>Miss Distance: {activeConj.missDistanceMeters.toLocaleString()} m</div>
+                          <div>Pc: {activeConj.pcDisplay}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    <Link
+                      href={`/maneuvers?event=${activeConj ? activeConj.id : ''}`}
+                      className="w-full py-2 bg-orbit-cyan hover:bg-[#00c5dd] text-void font-bold text-[10.5px] uppercase tracking-wide text-center block rounded-[2px] transition-colors"
+                    >
+                      Maneuver Simulator →
+                    </Link>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* BOTTOM RIGHT LEGEND */}
+          {!compact && (
+            <div className="absolute bottom-4 right-4 bg-void/90 border border-iron p-3.5 rounded-[4px] font-mono text-[9px] z-20 space-y-2">
+              <span className="text-[9px] font-bold text-graphite uppercase tracking-wider block border-b border-iron/60 pb-1 mb-1">
+                Orbit Legend
+              </span>
+              {[
+                { color: '#00bae2', label: 'Nominal Trajectory', dashed: false },
+                { color: '#ff3355', label: 'Critical Hazard (animated)', dashed: true },
+                { color: '#ffb829', label: 'Caution Orbit (animated)', dashed: true },
+                { color: '#4a4e55', label: 'Debris Object Track', dashed: false },
+                { color: '#00ff88', label: 'Post-Burn Deflection', dashed: true },
+                { color: '#8e9096', label: 'Kessler Debris Cloud', dot: true },
+              ].map(({ color, label, dashed, dot }) => (
+                <div key={label} className="flex items-center space-x-2">
+                  {dot
+                    ? <span className="w-2 h-2 rounded-full inline-block shrink-0" style={{ backgroundColor: color }} />
+                    : <span
+                        className="w-5 h-px inline-block shrink-0"
+                        style={{
+                          backgroundColor: color,
+                          backgroundImage: dashed ? `repeating-linear-gradient(90deg, ${color} 0, ${color} 4px, transparent 4px, transparent 8px)` : 'none',
+                          height: '2px',
+                        }}
+                      />
+                  }
+                  <span className="text-ash">{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

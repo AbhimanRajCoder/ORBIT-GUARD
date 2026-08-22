@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Zap,
   AlertTriangle,
@@ -19,13 +20,18 @@ import {
   Database,
   Target,
   ShieldCheck,
-  Send
+  Send,
+  Loader2,
+  X
 } from "lucide-react";
+
+const EarthView = dynamic(() => import("@/components/EarthView"), { ssr: false });
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import { ConjunctionEvent, Satellite, ManeuverPlan } from "@/types";
 import { calculateFuelCost, predictNewMissDistance } from "@/lib/orbital-physics";
 import { soundSynth } from "@/lib/sound-effects";
+import LifecycleTimeline from "@/components/dashboard/LifecycleTimeline";
 
 interface CalculateAPIResponse {
   options: ManeuverPlan[];
@@ -61,7 +67,40 @@ function ManeuversPageContent() {
   const [customDeltaV, setCustomDeltaV] = React.useState<number>(1.5);
   const [customLeadTimeHours, setCustomLeadTimeHours] = React.useState<number>(4.0);
   const [burnDirection, setBurnDirection] = React.useState<BurnDirection>('prograde');
+
+  // Gated approval states
+  const [comparisonData, setComparisonData] = React.useState<any>(null);
+  const [operatorRole, setOperatorRole] = React.useState<'Senior' | 'Junior'>('Senior');
+  const [tokenCountdown, setTokenCountdown] = React.useState<number | null>(null);
+  const [tokenExpired, setTokenExpired] = React.useState<boolean>(false);
+  const [authToken, setAuthToken] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (tokenCountdown === null) return;
+    if (tokenCountdown <= 0) {
+      setTokenExpired(true);
+      return;
+    }
+    const timerId = setTimeout(() => {
+      setTokenCountdown(tokenCountdown - 1);
+    }, 1000);
+    return () => clearTimeout(timerId);
+  }, [tokenCountdown]);
+
+  const handleRequestToken = () => {
+    const mockToken = "TOKEN-" + Math.random().toString(36).substring(2, 10).toUpperCase() + "-" + Date.now().toString().slice(-4);
+    setAuthToken(mockToken);
+    setTokenCountdown(600); // 10 minutes
+    setTokenExpired(false);
+  };
   const [isCustomMode, setIsCustomMode] = React.useState<boolean>(false);
+  const [devMode, setDevMode] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    setAuthToken(null);
+    setTokenCountdown(null);
+    setTokenExpired(false);
+  }, [selectedOptionIndex, isCustomMode]);
 
   // Telemetry Console Logs
   const [consoleLogs, setConsoleLogs] = React.useState<string[]>([]);
@@ -70,6 +109,78 @@ function ManeuversPageContent() {
   // AI Briefing Preview State
   const [aiBriefingText, setAiBriefingText] = React.useState<string>("");
   const [loadingBriefing, setLoadingBriefing] = React.useState<boolean>(false);
+
+  // 3D Visualization Trajectories
+  const [protectedAssetTrajectory, setProtectedAssetTrajectory] = React.useState<any[]>([]);
+  const [threatTrajectory, setThreatTrajectory] = React.useState<any[]>([]);
+  const [maneuverTrajectory, setManeuverTrajectory] = React.useState<any[] | null>(null);
+  const [tcaTime, setTcaTime] = React.useState<string>("");
+  const [tcaPosition, setTcaPosition] = React.useState<[number, number, number] | undefined>(undefined);
+  const [safetyRadiusKm, setSafetyRadiusKm] = React.useState<number>(0.15);
+
+  // Fetch nominal visualization trajectories
+  React.useEffect(() => {
+    if (!selectedEventId) {
+      setProtectedAssetTrajectory([]);
+      setThreatTrajectory([]);
+      setTcaTime("");
+      setTcaPosition(undefined);
+      setSafetyRadiusKm(0.15);
+      return;
+    }
+
+    const candidateId = selectedEventId.split("-").pop();
+    if (!candidateId) return;
+
+    const fetchNominal = async () => {
+      try {
+        const res = await fetch(`/api/visualize?candidate_id=${candidateId}&window_hours=6&step_seconds=60`);
+        if (res.ok) {
+          const data = await res.json();
+          setProtectedAssetTrajectory(data.protected_asset_path || []);
+          setThreatTrajectory(data.candidate_path || []);
+          setTcaTime(data.danger_zone?.tca || "");
+          setTcaPosition(data.danger_zone?.center_ecef_km);
+          setSafetyRadiusKm(data.danger_zone?.radius_km || 0.15);
+        }
+      } catch (err) {
+        console.error("Failed to fetch nominal visualizer paths:", err);
+      }
+    };
+    fetchNominal();
+  }, [selectedEventId]);
+
+  // Fetch maneuver post-burn trajectory when selected plan changes
+  React.useEffect(() => {
+    if (!selectedEventId || options.length === 0 || isCustomMode) {
+      setManeuverTrajectory(null);
+      return;
+    }
+
+    const candidateId = selectedEventId.split("-").pop();
+    const selectedPlan = options[selectedOptionIndex];
+    if (!candidateId || !selectedPlan) {
+      setManeuverTrajectory(null);
+      return;
+    }
+
+    let optionLabel = "medium burn"; // default BAL
+    if (selectedPlan.id.includes("MIN")) optionLabel = "small burn";
+    else if (selectedPlan.id.includes("MAX")) optionLabel = "large burn";
+
+    const fetchManeuver = async () => {
+      try {
+        const res = await fetch(`/api/visualize?candidate_id=${candidateId}&option_label=${encodeURIComponent(optionLabel)}&window_hours=6&step_seconds=60`);
+        if (res.ok) {
+          const data = await res.json();
+          setManeuverTrajectory(data.maneuver_path || null);
+        }
+      } catch (err) {
+        console.error("Failed to fetch maneuver path:", err);
+      }
+    };
+    fetchManeuver();
+  }, [selectedEventId, options, selectedOptionIndex, isCustomMode]);
 
   // 1. Fetch active conjunction events on mount
   React.useEffect(() => {
@@ -190,6 +301,7 @@ function ManeuversPageContent() {
         const result: CalculateAPIResponse = await response.json();
         setOptions(result.options);
         setSelectedOptionIndex(1); // default to Balanced
+        setComparisonData((result as any).comparison);
         // Set default sandbox custom slider values
         if (result.options.length > 1) {
           setCustomDeltaV(result.options[1].deltaV);
@@ -205,6 +317,10 @@ function ManeuversPageContent() {
   // 4. Approve and Schedule Maneuver Plan API
   const handleApproveManeuver = async (plan: ManeuverPlan) => {
     if (!satelliteData) return;
+    if (operatorRole === "Junior" && plan.propellantMassKg > 5.0) {
+      alert("Role Block: Junior operators are not permitted to authorize maneuvers consuming more than 5.0 kg of propellant.");
+      return;
+    }
     try {
       const response = await fetch("/api/maneuvers/approve", {
         method: "POST",
@@ -478,11 +594,25 @@ function ManeuversPageContent() {
       
       {/* 1. LEFT COLUMN: threat context selection & fleet status (3 cols) */}
       <div className="xl:col-span-3 space-y-6 flex flex-col">
-        <div className="flex items-center space-x-2">
-          <Database className="h-4 w-4 text-ash" />
-          <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
-            Threat Context Selection
-          </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Database className="h-4 w-4 text-ash" />
+            <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
+              Threat Context Selection
+            </h2>
+          </div>
+          <button
+            onClick={() => setDevMode(!devMode)}
+            className={cn(
+              "px-2 py-1 rounded text-[9px] font-mono border transition-all cursor-pointer",
+              devMode
+                ? "bg-orbit-cyan/15 border-orbit-cyan/60 text-orbit-cyan"
+                : "bg-void/40 border-iron text-ash hover:text-bone hover:border-graphite"
+            )}
+            title="Dev Audit: Print raw JSON backend fields next to numbers"
+          >
+            {devMode ? "JSON AUDIT: ON" : "JSON AUDIT"}
+          </button>
         </div>
 
         <Card className="p-4 space-y-5 bg-abyss border border-iron hover:border-graphite transition-all flex-grow">
@@ -526,14 +656,18 @@ function ManeuversPageContent() {
               </div>
               
               <div className="grid grid-cols-2 gap-4 bg-void/50 p-3 rounded border border-iron/40">
-                <div>
+                <div title={devMode ? "backend: alert.min_distance_km" : undefined}>
                   <span className="font-display text-[9px] text-graphite uppercase tracking-wide block">Current Miss</span>
-                  <span className="font-data text-[12px] text-bone block mt-0.5">{eventData.missDistanceMeters.toLocaleString()} m</span>
+                  <span className="font-data text-[12px] text-bone block mt-0.5">
+                    {eventData.missDistanceMeters.toLocaleString()} m
+                    {devMode && <span className="text-[8px] text-graphite font-mono block">alert.min_distance_km</span>}
+                  </span>
                 </div>
-                <div>
+                <div title={devMode ? "backend: alert.risk_score (scaled to Pc)" : undefined}>
                   <span className="font-display text-[9px] text-graphite uppercase tracking-wide block">Collision Prob</span>
                   <span className="font-data text-[12px] text-collision-red block mt-0.5 font-bold">
                     {eventData.pcDisplay}
+                    {devMode && <span className="text-[8px] text-graphite font-mono block">alert.risk_score</span>}
                   </span>
                 </div>
               </div>
@@ -573,6 +707,12 @@ function ManeuversPageContent() {
             </div>
           )}
         </Card>
+
+        {!loading && eventData && (
+          <div className="flex-shrink-0 animate-slide-in">
+            <LifecycleTimeline event={eventData} />
+          </div>
+        )}
       </div>
 
       {/* 2. CENTER COLUMN: Live Deflection Chart & Burn selection (6 cols) */}
@@ -603,52 +743,24 @@ function ManeuversPageContent() {
         {options.length > 0 && !isApproved && (
           <div className="space-y-6 flex-grow flex flex-col">
             
-            {/* Real-time SVG Trajectory Chart */}
-            <Card className="p-4 bg-void border border-iron relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-3 left-4 flex items-center space-x-2 text-[10px] uppercase font-display text-graphite">
+            {/* Real-time 3D Trajectory Visualizer */}
+            <Card className="bg-void border border-iron relative overflow-hidden flex flex-col justify-between h-[360px]">
+              <div className="absolute top-3 left-4 flex items-center space-x-2 text-[10px] uppercase font-display text-graphite z-10">
                 <Target className="h-3 w-3 text-orbit-cyan" />
-                <span>Relative Deflection Plot (Encounter Plane RIC Frame)</span>
+                <span>3D Trajectory Visualization (Live Backend Feed)</span>
               </div>
-              <div className="absolute top-3 right-4 flex items-center space-x-3 text-[9px] uppercase font-data">
-                <span className="flex items-center space-x-1">
-                  <span className="w-2.5 h-0.5 bg-collision-red inline-block border-t border-dashed border-collision-red" />
-                  <span className="text-graphite">Unmitigated path</span>
-                </span>
-                <span className="flex items-center space-x-1">
-                  <span className="w-2.5 h-0.5 bg-cleared-green inline-block" />
-                  <span className="text-cleared-green">Deflected path</span>
-                </span>
-              </div>
-
-              {/* SVG Canvas */}
-              <div className="w-full h-52 flex items-center justify-center mt-3 bg-void/50 border border-iron/30 rounded relative">
-                {svgCoords && (
-                  <svg className="w-full h-full" viewBox="0 0 400 200">
-                    <line x1="40" y1="100" x2="360" y2="100" stroke="#1c1c1f" strokeWidth="0.8" />
-                    <line x1="200" y1="30" x2="200" y2="170" stroke="#1c1c1f" strokeWidth="0.8" />
-                    
-                    <text x="365" y="103" fill="#404043" fontSize="8" fontFamily="monospace">In-Track (+T)</text>
-                    <text x="203" y="28" fill="#404043" fontSize="8" fontFamily="monospace">Radial (+R)</text>
-
-                    <line x1="40" y1="100" x2="360" y2="100" stroke="#404043" strokeDasharray="3 3" strokeWidth="1" />
-                    
-                    <path d={svgCoords.original} fill="none" stroke="#ff3355" strokeDasharray="3 3" strokeWidth="1" />
-                    
-                    <path d={svgCoords.deflected} fill="none" stroke={svgCoords.isSafe ? "#0ae448" : "#ffb829"} strokeWidth="2" className="transition-all duration-300" />
-                    
-                    <circle cx={svgCoords.threatPoint.x} cy={svgCoords.threatPoint.y} r="8" fill="rgba(255, 51, 85, 0.15)" stroke="rgba(255, 51, 85, 0.3)" strokeWidth="1" className="animate-ping" />
-                    <circle cx={svgCoords.threatPoint.x} cy={svgCoords.threatPoint.y} r="4.5" fill="#ff3355" />
-                    
-                    {activePlan && (
-                      <circle
-                        cx={200 + (burnDirection.startsWith('radial') ? 0 : (activePlan.newMissDistance - eventData!.missDistance) * (burnDirection === 'retrograde' ? -10 : 10))}
-                        cy={100 - (burnDirection.startsWith('radial') ? (activePlan.newMissDistance - eventData!.missDistance) * (burnDirection === 'radial-in' ? -10 : 10) : 0)}
-                        r="5"
-                        fill={svgCoords.isSafe ? "#0ae448" : "#ffb829"}
-                        className="transition-all duration-300"
-                      />
-                    )}
-                  </svg>
+              <div className="w-full h-full relative overflow-hidden rounded">
+                {satelliteData && (
+                  <EarthView 
+                    selectedObject={satelliteData.id} 
+                    compact={true} 
+                    protectedAssetTrajectory={protectedAssetTrajectory}
+                    threatTrajectory={threatTrajectory}
+                    maneuverTrajectory={maneuverTrajectory}
+                    tcaTime={tcaTime}
+                    tcaPosition={tcaPosition}
+                    safetyRadiusKm={safetyRadiusKm}
+                  />
                 )}
               </div>
             </Card>
@@ -683,13 +795,19 @@ function ManeuversPageContent() {
                     </div>
                     
                     <div className="space-y-1.5 mt-0.5 font-data">
-                      <div className="flex justify-between text-[11px]">
+                      <div className="flex justify-between text-[11px]" title={devMode ? `backend: option[${idx}].delta_v_ms` : undefined}>
                         <span className="text-graphite uppercase text-[9px] font-display">Delta-V</span>
-                        <span className="text-bone font-semibold">{opt.deltaV.toFixed(2)} m/s</span>
+                        <span className="text-bone font-semibold">
+                          {opt.deltaV.toFixed(2)} m/s
+                          {devMode && <span className="text-[8px] text-graphite ml-1">.delta_v_ms</span>}
+                        </span>
                       </div>
-                      <div className="flex justify-between text-[11px]">
+                      <div className="flex justify-between text-[11px]" title={devMode ? `backend: option[${idx}].resulting_min_distance_km` : undefined}>
                         <span className="text-graphite uppercase text-[9px] font-display">New Miss</span>
-                        <span className="text-orbit-cyan font-bold">{opt.newMissDistance.toFixed(2)} km</span>
+                        <span className="text-orbit-cyan font-bold">
+                          {opt.newMissDistance.toFixed(2)} km
+                          {devMode && <span className="text-[8px] text-graphite ml-1">.resulting_min_distance_km</span>}
+                        </span>
                       </div>
                     </div>
                   </button>
@@ -715,26 +833,200 @@ function ManeuversPageContent() {
                 </div>
                 
                 <p className="font-body text-[12px] text-bone leading-relaxed">
-                  A <strong className="text-orbit-cyan font-data">{activePlan.deltaV.toFixed(3)} m/s</strong> thruster burn aligned <strong className="text-bone font-data uppercase">{activePlan.burnDirection}</strong> scheduled at <span className="font-data text-ash">{activePlan.burnTime.slice(11, 19)} UTC</span>. Projected approach offset expands to <strong className="text-cleared-green font-data">{(activePlan.newMissDistance).toFixed(3)} km</strong>, expending <span className="font-data text-bone">{activePlan.propellantMassKg.toFixed(3)} kg</span> Xenon propellant.
+                  A <strong className="text-orbit-cyan font-data" title={devMode ? "backend: chosen_option.delta_v_ms" : undefined}>
+                    {activePlan.deltaV.toFixed(3)} m/s
+                    {devMode && <span className="text-[8px] text-graphite font-mono"> [delta_v_ms]</span>}
+                  </strong> thruster burn aligned <strong className="text-bone font-data uppercase">{activePlan.burnDirection}</strong> scheduled at <span className="font-data text-ash">{activePlan.burnTime.slice(11, 19)} UTC</span>. Projected approach offset expands to <strong className="text-cleared-green font-data" title={devMode ? "backend: chosen_option.resulting_min_distance_km" : undefined}>
+                    {(activePlan.newMissDistance).toFixed(3)} km
+                    {devMode && <span className="text-[8px] text-graphite font-mono"> [resulting_min_distance_km]</span>}
+                  </strong>, expending <span className="font-data text-bone" title={devMode ? "backend: chosen_option.fuel_cost_kg" : undefined}>
+                    {activePlan.propellantMassKg.toFixed(3)} kg
+                    {devMode && <span className="text-[8px] text-graphite font-mono"> [fuel_cost_kg]</span>}
+                  </span> Xenon propellant.
                 </p>
 
                 {/* Telemetry data matrix */}
                 <div className="grid grid-cols-4 gap-3 bg-void/50 border border-iron/40 rounded p-3 font-data text-[11px] text-ash">
-                  <div>
+                  <div title={devMode ? "backend: chosen_option.delta_v_ms" : undefined}>
                     <span className="font-display text-[8px] text-graphite uppercase block">Velocity change</span>
-                    <span className="text-bone font-semibold block mt-0.5">{activePlan.deltaV.toFixed(3)} m/s</span>
+                    <span className="text-bone font-semibold block mt-0.5">
+                      {activePlan.deltaV.toFixed(3)} m/s
+                      {devMode && <span className="text-[7px] text-graphite font-mono block">delta_v_ms</span>}
+                    </span>
                   </div>
-                  <div>
+                  <div title={devMode ? "backend: chosen_option.fuel_cost_kg" : undefined}>
                     <span className="font-display text-[8px] text-graphite uppercase block">Fuel spent</span>
-                    <span className="text-bone font-semibold block mt-0.5">{activePlan.propellantMassKg.toFixed(3)} kg</span>
+                    <span className="text-bone font-semibold block mt-0.5">
+                      {activePlan.propellantMassKg.toFixed(3)} kg
+                      {devMode && <span className="text-[7px] text-graphite font-mono block">fuel_cost_kg</span>}
+                    </span>
                   </div>
-                  <div>
+                  <div title={devMode ? "backend: chosen_option.resulting_min_distance_km" : undefined}>
                     <span className="font-display text-[8px] text-graphite uppercase block">Offset Approach</span>
-                    <span className="text-orbit-cyan font-bold block mt-0.5">{activePlan.newMissDistance.toFixed(3)} km</span>
+                    <span className="text-orbit-cyan font-bold block mt-0.5">
+                      {activePlan.newMissDistance.toFixed(3)} km
+                      {devMode && <span className="text-[7px] text-graphite font-mono block">resulting_min_distance_km</span>}
+                    </span>
                   </div>
                   <div>
                     <span className="font-display text-[8px] text-graphite uppercase block">Burn Window</span>
                     <span className="text-bone font-semibold block mt-0.5">{activePlan.burnTime.slice(11, 19)} UTC</span>
+                  </div>
+                </div>
+
+                {/* Trade-off Comparison Panel */}
+                {comparisonData && (
+                  <div className="bg-graphite/40 border border-white/10 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center space-x-2 border-b border-white/5 pb-2">
+                      <Sparkles className="h-4 w-4 text-orbit-cyan" />
+                      <span className="font-mono text-[10px] text-ash uppercase tracking-wider">
+                        Target Analysis & Trade-Off Comparison
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="font-sans text-[14px] leading-relaxed text-ash">
+                        {comparisonData.reasoning}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        {comparisonData.ranked_options.map((opt: any, rIdx: number) => {
+                          const isRecommended = comparisonData.recommended_option_id === opt.option_id;
+                          const score = opt.composite_score;
+                          const planType = opt.label === "small burn" ? "MIN" : opt.label === "large burn" ? "MAX" : "BAL";
+                          const matchedPlan = options.find(p => p.id.includes(planType));
+                          const resultingDist = matchedPlan ? matchedPlan.newMissDistance : (opt.resulting_min_distance_km ?? 0);
+                          const fuelCost = matchedPlan ? matchedPlan.propellantMassKg : (opt.fuel_cost_kg ?? 0);
+
+                          const isDivergent = matchedPlan?.cwDivergenceFlag;
+                          const secWarning = matchedPlan?.secondaryConjunctionWarning;
+
+                          return (
+                            <div 
+                              key={opt.option_id}
+                              className={cn("p-3 rounded-lg border flex flex-col justify-between space-y-1.5", 
+                                isRecommended 
+                                  ? "bg-orbit-cyan/5 border-orbit-cyan/45 text-orbit-cyan font-bold"
+                                  : "bg-void/40 border-white/5 text-ash",
+                                score === 0 && "opacity-40 bg-zinc-950/60 border-zinc-800/40"
+                              )}
+                              title={devMode ? `comparison.ranked_options[${rIdx}]` : undefined}
+                            >
+                              <div className="flex justify-between items-center">
+                                <span className="font-sans text-[12px] capitalize">
+                                  {opt.label} {isRecommended && "★"}
+                                  {score === 0 && " (Disqualified)"}
+                                </span>
+                                <span className="font-mono text-[11px]" title={devMode ? `ranked_options[${rIdx}].composite_score` : undefined}>
+                                  Score: {score.toFixed(1)}
+                                  {devMode && <span className="text-[7px] block text-graphite">composite_score</span>}
+                                </span>
+                              </div>
+                              <div className="font-mono text-[10px] opacity-80 space-y-0.5">
+                                <div title={devMode ? "backend: chosen_option.resulting_min_distance_km" : undefined}>
+                                  Dist: {resultingDist.toFixed(2)} km
+                                  {devMode && <span className="text-[7px] text-graphite ml-1">.resulting_min_distance_km</span>}
+                                </div>
+                                <div title={devMode ? "backend: chosen_option.fuel_cost_kg" : undefined}>
+                                  Fuel: {fuelCost.toFixed(2)} kg
+                                  {devMode && <span className="text-[7px] text-graphite ml-1">.fuel_cost_kg</span>}
+                                </div>
+
+                                {isDivergent && (
+                                  <div className="text-[8px] text-threat-amber font-semibold uppercase mt-1 animate-pulse" title={devMode ? "backend: chosen_option.cw_divergence_flag" : undefined}>
+                                    ⚠️ CW Divergence
+                                    {devMode && <span className="text-[6px] block text-graphite">.cw_divergence_flag</span>}
+                                  </div>
+                                )}
+
+                                {secWarning && (
+                                  <div className="text-[8px] text-collision-red font-semibold uppercase mt-1" title={devMode ? "backend: chosen_option.secondary_conjunction_warning" : undefined}>
+                                    ⚠️ Sec: {secWarning}
+                                    {devMode && <span className="text-[6px] block text-graphite">.secondary_conjunction_warning</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Gated Warnings */}
+                {(() => {
+                  const parts = activePlan.id.split('-');
+                  const candidateId = parts[parts.length - 1];
+                  const idx = activePlan.id.includes('MIN') ? 1 : activePlan.id.includes('MAX') ? 3 : 2;
+                  const optionId = `mnv_${candidateId}_${idx}`;
+                  const isDisqualified = comparisonData?.ranked_options?.find((o: any) => o.option_id === optionId)?.composite_score === 0;
+                  const isRoleBlocked = operatorRole === 'Junior' && activePlan && activePlan.propellantMassKg > 5.0;
+
+                  return (
+                    <>
+                      {isDisqualified && (
+                        <div className="bg-collision-red/10 border border-collision-red/30 text-collision-red p-4 rounded-xl space-y-2">
+                          <span className="font-sans text-[14px] font-bold">⚠ MANEUVER BLOCKED — Secondary Conjunction Risk</span>
+                          <p className="font-sans text-[12px] opacity-90">
+                            This burn creates a new conjunction closer than the original threat separation. The system does not permit operator overrides for disqualified orbits.
+                          </p>
+                          <span className="font-mono text-[11px] block">Composite Score: 0.0/100</span>
+                        </div>
+                      )}
+
+                      {isRoleBlocked && (
+                        <div className="bg-collision-red/10 border border-collision-red/30 text-collision-red p-4 rounded-xl space-y-2">
+                          <span className="font-sans text-[14px] font-bold">⚠ ACTION BLOCKED — Operator Role Restriction</span>
+                          <p className="font-sans text-[12px] opacity-90">
+                            Junior operators are not permitted to authorize maneuvers consuming more than 5.0 kg of propellant. This burn requires <strong>{activePlan.propellantMassKg.toFixed(2)} kg</strong>.
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* Cryptographic Authorization Gate */}
+                <div className="bg-void p-4 rounded-xl border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span className="font-mono text-[10px] text-ash uppercase tracking-wider">
+                      Cryptographic Authorization Gate
+                    </span>
+                    {authToken && (
+                      <span className={cn("font-mono text-[11px] font-bold px-2 py-0.5 rounded", 
+                        tokenExpired ? "bg-collision-red/20 text-collision-red" : "bg-cleared-green/20 text-cleared-green animate-pulse"
+                      )}>
+                        {tokenExpired ? "EXPIRED" : "ACTIVE"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="space-y-1">
+                      {authToken ? (
+                        <>
+                          <span className="font-mono text-[11px] text-orbit-cyan block break-all">
+                            {authToken}
+                          </span>
+                          <span className="font-sans text-[11px] text-ash block">
+                            Token valid for: <strong className="font-mono text-cloud">{Math.floor((tokenCountdown ?? 0) / 60)}:{((tokenCountdown ?? 0) % 60).toString().padStart(2, '0')}</strong>
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-sans text-[12px] text-ash italic">
+                          Acquire an operator authorization token before burn transmission.
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRequestToken}
+                      className="px-4 py-2 bg-transparent border border-white/20 hover:border-pure text-pure hover:bg-white/5 rounded-lg font-sans text-[13px] font-medium transition-all shrink-0 cursor-pointer"
+                    >
+                      {authToken ? "Regenerate Token" : "Acquire Token →"}
+                    </button>
                   </div>
                 </div>
 
@@ -755,19 +1047,50 @@ function ManeuversPageContent() {
                 </div>
 
                 {/* Actions footer */}
-                <div className="border-t border-iron/40 pt-4 flex space-x-3 justify-end">
-                  <Link
-                    href="/dashboard"
-                    className="py-2 px-4 border border-iron rounded-[4px] text-ash hover:text-bone hover:bg-iron/10 text-[11px] font-display font-bold uppercase transition-colors"
-                  >
-                    Cancel
-                  </Link>
-                  <button
-                    onClick={() => handleApproveManeuver(activePlan as any)}
-                    className="py-2 px-6 bg-orbit-cyan hover:bg-[#00c5dd] text-void font-bold text-[11px] font-display uppercase tracking-wider rounded-[4px] transition-colors"
-                  >
-                    Approve & Schedule Burn
-                  </button>
+                <div className="border-t border-iron/40 pt-4 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
+                  {/* Operator Role Selector */}
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono text-[10px] text-ash uppercase tracking-wider">Role:</span>
+                    <select
+                      value={operatorRole}
+                      onChange={(e) => setOperatorRole(e.target.value as 'Senior' | 'Junior')}
+                      className="bg-void border border-iron rounded-[4px] px-2 py-1 text-[11px] text-bone font-sans focus:outline-none"
+                    >
+                      <option value="Senior">Senior Operator</option>
+                      <option value="Junior">Junior Operator</option>
+                    </select>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <Link
+                      href="/dashboard"
+                      className="py-2 px-4 border border-iron rounded-[4px] text-ash hover:text-bone hover:bg-iron/10 text-[11px] font-display font-bold uppercase transition-colors"
+                    >
+                      Cancel
+                    </Link>
+                    {(() => {
+                      const parts = activePlan.id.split('-');
+                      const candidateId = parts[parts.length - 1];
+                      const idx = activePlan.id.includes('MIN') ? 1 : activePlan.id.includes('MAX') ? 3 : 2;
+                      const optionId = `mnv_${candidateId}_${idx}`;
+                      const isDisqualified = comparisonData?.ranked_options?.find((o: any) => o.option_id === optionId)?.composite_score === 0;
+                      const isRoleBlocked = operatorRole === 'Junior' && activePlan && activePlan.propellantMassKg > 5.0;
+
+                      return (
+                        <button
+                          onClick={() => handleApproveManeuver(activePlan as any)}
+                          disabled={isDisqualified || isRoleBlocked || !authToken || tokenExpired}
+                          className={cn("py-2 px-6 font-bold text-[11px] font-display uppercase tracking-wider rounded-[4px] transition-colors cursor-pointer",
+                            (isDisqualified || isRoleBlocked || !authToken || tokenExpired)
+                              ? "bg-iron text-graphite cursor-not-allowed"
+                              : "bg-orbit-cyan hover:bg-[#00c5dd] text-void"
+                          )}
+                        >
+                          Approve & Schedule Burn
+                        </button>
+                      );
+                    })()}
+                  </div>
                 </div>
               </Card>
             )}
@@ -862,6 +1185,9 @@ function ManeuversPageContent() {
             <div className="text-center pt-2 border-t border-cleared-green/10 flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/dashboard" className="px-6 py-2 bg-void border border-cleared-green/30 text-cleared-green hover:bg-cleared-green/10 hover:text-white transition-colors rounded-[4px] text-[12px] font-display uppercase tracking-wider font-bold">
                 Return to Dashboard
+              </Link>
+              <Link href={`/map?sat=${approvedPlan.satelliteId}&event=${approvedPlan.conjunctionEventId}`} className="px-6 py-2 bg-orbit-cyan hover:bg-[#00c5dd] text-void transition-colors rounded-[4px] text-[12px] font-display uppercase tracking-wider font-bold">
+                View on 3D Map
               </Link>
             </div>
           </Card>

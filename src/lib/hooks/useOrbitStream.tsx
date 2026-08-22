@@ -76,6 +76,12 @@ export function StreamProvider({ children }: { children: React.ReactNode }) {
             `⚠ New conjunction event detected: ${updatedSat.name} + ${conjEvent.secondaryName}`,
             "warning"
           );
+        } else if (type === "conjunction_update") {
+          const updatedEvent = payload;
+          setConjunctionEvents((prev) =>
+            prev.map((e) => (e.id === updatedEvent.id ? { ...e, ...updatedEvent } : e))
+          );
+          addToast(`🔄 Alert status updated for ${updatedEvent.secondaryName}`, "info");
         } else if (type === "status_update") {
           setLastUpdated(payload.lastDataUpdate || new Date().toISOString());
         }

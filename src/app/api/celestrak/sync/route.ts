@@ -1,22 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { fetchCelesTrakCatalogs } from "@/lib/celestrak";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
-    // Fetch top 50 active satellites and top 50 debris from CelesTrak
-    const { active, debris } = await fetchCelesTrakCatalogs(50);
-    
-    // Load them into DB and re-screen conjunctions
-    db.updateDataFromCatalogs(active, debris);
+    // 1. Call FastAPI triage refresh endpoint
+    const refreshRes = await fetch("http://127.0.0.1:8000/triage/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        protected_asset_ids: ["25544"],
+        satellite_group: "active",
+        distance_threshold_km: 5.0,
+        mission_priority: 1.0
+      }),
+      cache: "no-store"
+    });
+
+    if (!refreshRes.ok) {
+      const errDetail = await refreshRes.text();
+      return NextResponse.json(
+        { success: false, error: `Triage refresh failed: ${errDetail}` },
+        { status: refreshRes.status }
+      );
+    }
+
+    const refreshData = await refreshRes.json();
 
     return NextResponse.json({
       success: true,
-      message: `Successfully synced ${db.getSatellites().length} objects (active & debris) from CelesTrak and re-ran conjunction screening.`,
-      satellites: db.getSatellites(),
-      conjunctionsCount: db.getConjunctionEvents().length
+      message: `Successfully synced catalog from CelesTrak and re-ran conjunction screening.`,
+      satellites: refreshData.alerts.length,
+      conjunctionsCount: refreshData.alerts.length
     });
   } catch (error: any) {
     console.error("Error during CelesTrak sync:", error);

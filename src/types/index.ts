@@ -97,6 +97,15 @@ export interface ConjunctionEvent {
 
   // Source
   source: 'computed' | 'socrates';  // whether from our pipeline or SOCRATES
+
+  // Lifecycle transitions
+  lifecycle?: Array<{
+    state: string;
+    label: string;
+    timestamp: string;
+    actor: string;
+    details: any;
+  }>;
 }
 
 /** Maneuver plan — output of Step 5 */
@@ -124,6 +133,10 @@ export interface ManeuverPlan {
   // Status
   status: 'proposed' | 'approved' | 'executed' | 'cancelled';
   createdAt: string;           // ISO timestamp
+
+  // Physics honesty fields from ManeuverOption schema
+  cwDivergenceFlag?: boolean;
+  secondaryConjunctionWarning?: string | null;
 }
 
 /** AI Briefing — output of Feature 4 */

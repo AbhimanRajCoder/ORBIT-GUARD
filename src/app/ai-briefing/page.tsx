@@ -80,33 +80,36 @@ export default function AIBriefingPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-[#0b101f]/90 border border-space-border/60 p-6 rounded-[6px] relative overflow-hidden shadow-lg select-none flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orbit-cyan/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-orbit-cyan/10 border border-orbit-cyan/30 rounded-[4px] text-orbit-cyan shrink-0">
-            <Bot className="h-6 w-6" strokeWidth={1.5} />
+      {/* Editorial Header */}
+      <div className="bg-[#847dff]/10 border border-[#847dff]/20 p-8 rounded-[30px] relative overflow-hidden shadow-2xl select-none flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#847dff]/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#847dff]/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="flex items-start gap-5 relative">
+          <div className="p-3.5 bg-[#847dff]/15 border border-[#847dff]/30 rounded-2xl text-[#847dff] shrink-0">
+            <Bot className="h-7 w-7" strokeWidth={1.5} />
           </div>
-          <div className="space-y-1">
-            <h2 className="text-lg font-display font-bold text-bone tracking-wide uppercase flex items-center gap-2">
-              AI Situation Briefing
-              <span className="px-2 py-0.5 rounded-[4px] bg-orbit-cyan/15 text-orbit-cyan border border-orbit-cyan/35 text-[9px] font-display font-bold uppercase tracking-widest">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <h1 className="text-[32px] font-light text-cloud leading-none" style={{ fontFamily: "'Playfair Display', 'DM Serif Display', serif" }}>
+                Situation <em className="italic">Briefing</em>
+              </h1>
+              <span className="px-2.5 py-1 rounded-full bg-[#847dff]/20 text-[#847dff] border border-[#847dff]/30 text-[10px] font-mono font-bold uppercase tracking-widest">
                 Llama 3.1
               </span>
-            </h2>
-            <p className="text-[12px] text-ash max-w-2xl leading-relaxed">
-              Generate instant plain-English summaries of critical orbital hazards and recommended evasive maneuvers. Suitable for flight-director briefing packages and rapid operator alignment.
+            </div>
+            <p className="text-[14px] text-ash/80 max-w-xl leading-relaxed font-sans font-light">
+              AI-synthesized plain-English situation overviews for flight-director briefing packages and rapid operator alignment.
             </p>
           </div>
         </div>
 
         {/* Dropdown Selector */}
-        <div className="flex flex-col gap-1.5 shrink-0 min-w-[240px]">
-          <label className="text-[9px] font-display font-bold text-ash uppercase tracking-wider">Select Conjunction Event</label>
+        <div className="flex flex-col gap-2 shrink-0 min-w-[280px] relative">
+          <label className="text-[10px] font-mono font-medium text-[#847dff]/70 uppercase tracking-widest">Conjunction Event</label>
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full bg-[#070c18] border border-space-border/70 rounded-[4px] px-3 py-2 text-[12px] font-data font-bold text-bone focus:outline-none focus:border-orbit-cyan cursor-pointer"
+            className="w-full bg-void/60 border border-[#847dff]/25 rounded-xl px-4 py-2.5 text-[13px] font-sans text-cloud focus:outline-none focus:border-[#847dff]/60 cursor-pointer backdrop-blur-sm transition-colors"
           >
             {activeEvents.map((event) => (
               <option key={event.id} value={event.id}>
@@ -121,41 +124,41 @@ export default function AIBriefingPage() {
       </div>
 
       {loading ? (
-        <div className="bg-[#0b101f]/90 border border-space-border/60 rounded-[6px] p-24 text-center flex flex-col items-center justify-center space-y-4">
-          <RefreshCw className="h-8 w-8 text-orbit-cyan animate-spin" />
-          <span className="text-[12px] font-display font-bold text-ash uppercase tracking-wider">Synthesizing Situation Briefing...</span>
+        <div className="bg-[#847dff]/5 border border-[#847dff]/15 rounded-[30px] p-24 text-center flex flex-col items-center justify-center space-y-4">
+          <RefreshCw className="h-8 w-8 text-[#847dff] animate-spin" />
+          <span className="text-[14px] font-sans font-light text-ash tracking-wide">Synthesizing situation briefing…</span>
         </div>
       ) : briefing && selectedEvent ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Plain English Briefing Card - Left */}
+          {/* Editorial Briefing Card - Left */}
           <div className="lg:col-span-7 flex flex-col space-y-6">
-            <div className="bg-[#0b101f]/95 border border-space-border/60 rounded-[6px] shadow-xl p-6 flex-1 flex flex-col justify-between space-y-6 relative overflow-hidden">
+            <div className="bg-[#847dff]/5 border border-[#847dff]/15 rounded-[30px] shadow-2xl p-8 flex-1 flex flex-col justify-between space-y-6 relative overflow-hidden">
               {/* Corner AI Sparkle Decor */}
-              <div className="absolute top-0 right-0 p-4 opacity-15">
-                <Sparkles className="h-20 w-20 text-orbit-cyan" />
+              <div className="absolute top-0 right-0 p-6 opacity-10">
+                <Sparkles className="h-24 w-24 text-[#847dff]" />
               </div>
 
-              <div className="space-y-4 relative">
-                <div className="flex items-center space-x-2 text-orbit-cyan">
+              <div className="space-y-5 relative">
+                <div className="flex items-center space-x-2 text-[#847dff]">
                   <MessageSquare className="h-4 w-4" />
-                  <span className="text-[10px] font-display font-bold uppercase tracking-wider">Generated Briefing Text</span>
+                  <span className="text-[11px] font-mono font-medium uppercase tracking-widest">Situation Overview</span>
                 </div>
 
-                <div className="border-l-2 border-orbit-cyan/50 pl-5 py-2">
-                  <p className="text-[14px] text-bone font-body leading-relaxed select-text">
+                <div className="border-l-2 border-[#847dff]/40 pl-6 py-3">
+                  <p className="text-[16px] text-cloud font-light leading-[1.8] select-text" style={{ fontFamily: "'Playfair Display', 'DM Serif Display', serif" }}>
                     {briefing.briefingText}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-space-border/40 pt-4">
-                <div className="flex items-center space-x-1 text-ash text-[10px] font-mono">
+              <div className="flex items-center justify-between border-t border-[#847dff]/10 pt-4">
+                <div className="flex items-center space-x-1.5 text-ash/60 text-[11px] font-mono">
                   <span>Synthesized:</span>
                   <span>{new Date(briefing.generatedAt).toLocaleTimeString()}</span>
                 </div>
                 <button
                   onClick={() => copyToClipboard(briefing.briefingText, false)}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-[4px] border border-space-border hover:border-orbit-cyan text-[11px] font-display font-bold uppercase transition-colors text-ash hover:text-orbit-cyan bg-[#070c18]"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-xl border border-[#847dff]/25 hover:border-[#847dff]/50 text-[12px] font-sans font-medium transition-all text-[#847dff]/80 hover:text-[#847dff] hover:bg-[#847dff]/5"
                 >
                   {copiedText ? (
                     <>
@@ -173,10 +176,10 @@ export default function AIBriefingPage() {
             </div>
 
             {/* Event Summary Quick Details */}
-            <div className="bg-[#0b101f]/90 border border-space-border/60 rounded-[6px] p-5 shadow-lg space-y-4">
-              <div className="flex items-center space-x-2 text-ash border-b border-space-border/40 pb-2">
-                <Info className="h-4 w-4" />
-                <span className="text-[10px] font-display font-bold uppercase tracking-wider">Conjunction Metadata</span>
+            <div className="bg-graphite/30 border border-white/8 rounded-[30px] p-6 shadow-lg space-y-4 backdrop-blur-sm">
+              <div className="flex items-center space-x-2 text-ash/70 border-b border-white/5 pb-3">
+                <Info className="h-4 w-4 text-[#847dff]/60" />
+                <span className="text-[10px] font-mono font-medium uppercase tracking-widest">Conjunction Metadata</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-data text-[12px]">
                 <div className="space-y-1">
@@ -205,31 +208,31 @@ export default function AIBriefingPage() {
 
           {/* Structured JSON Context - Right */}
           <div className="lg:col-span-5 flex flex-col">
-            <div className="bg-[#050914] border border-space-border/60 rounded-[6px] shadow-xl overflow-hidden flex flex-col h-[400px] lg:h-full justify-between">
-              <div className="flex items-center justify-between bg-[#0a0e19] border-b border-space-border/60 px-4 py-3">
-                <div className="flex items-center space-x-2 text-ash">
-                  <Terminal className="h-4 w-4" />
-                  <span className="text-[10px] font-display font-bold uppercase tracking-wider">Structured JSON Context</span>
+            <div className="bg-void/80 border border-white/8 rounded-[30px] shadow-2xl overflow-hidden flex flex-col h-[400px] lg:h-full justify-between backdrop-blur-sm">
+              <div className="flex items-center justify-between bg-void/60 border-b border-white/5 px-5 py-3.5 rounded-t-[30px]">
+                <div className="flex items-center space-x-2 text-ash/70">
+                  <Terminal className="h-4 w-4 text-[#847dff]/50" />
+                  <span className="text-[10px] font-mono font-medium uppercase tracking-widest">Structured JSON Context</span>
                 </div>
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(briefing.context, null, 2), true)}
-                  className="p-1 rounded-[4px] border border-space-border hover:border-orbit-cyan transition-colors"
+                  className="p-1.5 rounded-lg border border-white/10 hover:border-[#847dff]/40 transition-colors"
                   title="Copy JSON to Clipboard"
                 >
                   {copiedJson ? (
                     <Check className="h-3.5 w-3.5 text-cleared-green" />
                   ) : (
-                    <Copy className="h-3.5 w-3.5 text-ash hover:text-orbit-cyan" />
+                    <Copy className="h-3.5 w-3.5 text-ash/60 hover:text-[#847dff]" />
                   )}
                 </button>
               </div>
 
               {/* Monospace Code Editor Block */}
-              <div className="flex-1 p-4 overflow-y-auto font-data text-[11px] text-[#4affb8] select-text scrollbar-thin bg-black/40">
+              <div className="flex-1 p-5 overflow-y-auto font-mono text-[11px] text-[#847dff]/80 select-text scrollbar-thin bg-void/40">
                 <pre>{JSON.stringify(briefing.context, null, 2)}</pre>
               </div>
 
-              <div className="bg-[#0a0e19] border-t border-space-border/60 px-4 py-3 flex items-center justify-between text-[10px] text-ash">
+              <div className="bg-void/60 border-t border-white/5 px-5 py-3 flex items-center justify-between text-[10px] text-ash/50 font-mono rounded-b-[30px]">
                 <div className="flex items-center space-x-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-cleared-green" />
                   <span>Payload OK</span>
@@ -240,10 +243,10 @@ export default function AIBriefingPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-[#0b101f]/90 border border-space-border/60 rounded-[6px] p-24 text-center flex flex-col items-center justify-center space-y-4">
-          <AlertTriangle className="h-8 w-8 text-threat-amber animate-pulse" />
-          <span className="text-[12px] font-display font-bold text-ash uppercase tracking-wider">No Active Conjunction Events Found</span>
-          <span className="text-[10px] text-ash/70 font-mono">Sync CelesTrak to populate conjunction event simulator data.</span>
+        <div className="bg-[#847dff]/5 border border-[#847dff]/15 rounded-[30px] p-24 text-center flex flex-col items-center justify-center space-y-4">
+          <AlertTriangle className="h-8 w-8 text-[#847dff]/60 animate-pulse" />
+          <span className="text-[14px] font-sans font-light text-ash tracking-wide">No active conjunction events found</span>
+          <span className="text-[11px] text-ash/50 font-mono">Sync CelesTrak to populate conjunction event simulator data.</span>
         </div>
       )}
     </div>

@@ -1,13 +1,21 @@
-import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const events = db.getConjunctionEvents();
-    
-    // Determine active critical (red) alerts
-    const criticalEvents = events.filter(
-      (e) => e.status === "active" && e.riskLevel === "red"
+    let backendAlerts: any[] = [];
+    try {
+      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      if (res.ok) {
+        backendAlerts = await res.json();
+      }
+    } catch (e) {
+      console.error("FastAPI backend is offline or unreachable:", e);
+    }
+
+    const criticalEvents = backendAlerts.filter(
+      (e: any) => e.risk_score > 75 && e.approval_status === "pending"
     );
 
     const activeAlerts = criticalEvents.length;

@@ -1,0 +1,961 @@
+{
+  "raw_log": [
+    [
+      "A",
+      "\n======================================================================"
+    ],
+    [
+      "A",
+      "  PART A \u2014 Multi-Asset Real-World Orbital Regime Coverage"
+    ],
+    [
+      "A",
+      "======================================================================"
+    ],
+    [
+      "A",
+      "\n--- Cold Cache Triage (all 5 assets, threshold=50 km) ---"
+    ],
+    [
+      "A",
+      "Cold cache processing time: 5.69s"
+    ],
+    [
+      "A",
+      "Total alerts generated: 43"
+    ],
+    [
+      "A",
+      "Source: cache (celestrak)"
+    ],
+    [
+      "A",
+      "\nPer-Asset Alert Breakdown:"
+    ],
+    [
+      "A",
+      "Asset                                          Alerts  Min Dist (km)  Max Dist (km)"
+    ],
+    [
+      "A",
+      "-------------------------------------------------------------------------------------"
+    ],
+    [
+      "A",
+      "ISS (LEO ~420 km, inc 51.6\u00b0)                        5         22.349         49.073"
+    ],
+    [
+      "A",
+      "HST/Hubble (LEO ~540 km, inc 28.5\u00b0)                25          2.847         49.838"
+    ],
+    [
+      "A",
+      "STARLINK-1008 (LEO ~550 km, inc 53.0\u00b0)              5         31.304         49.805"
+    ],
+    [
+      "A",
+      "TIMED (LEO ~588 km, inc 74.1\u00b0)                      8         13.081         45.001"
+    ],
+    [
+      "A",
+      "THEMIS-D (HEO ~39,771 km, inc 8.0\u00b0)                 0            N/A            N/A"
+    ],
+    [
+      "A",
+      "\n--- Warm Cache Triage (same parameters) ---"
+    ],
+    [
+      "A",
+      "Warm cache processing time: 5.89s"
+    ],
+    [
+      "A",
+      "Cold vs Warm speedup: 0.97x"
+    ],
+    [
+      "A",
+      "Note: Cold produced 43 alerts vs warm 41 \u2014 time-window drift expected (screening window starts at now())."
+    ],
+    [
+      "B",
+      "\n======================================================================"
+    ],
+    [
+      "B",
+      "  PART B \u2014 Full 7-Pillar Pipeline (3 Independent Candidates)"
+    ],
+    [
+      "B",
+      "======================================================================"
+    ],
+    [
+      "B",
+      "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "  CANDIDATE 1: STARLINK-34625 (NORAD 66154)"
+    ],
+    [
+      "B",
+      "  Protected Asset: 20580"
+    ],
+    [
+      "B",
+      "  Screened Min Distance: 19.760 km"
+    ],
+    [
+      "B",
+      "  TCA: 2026-08-20T15:31:05.024778Z"
+    ],
+    [
+      "B",
+      "  Risk Score: 69.2700"
+    ],
+    [
+      "B",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "\n  [Pillar 2] Risk Explanation"
+    ],
+    [
+      "B",
+      "  Source: groq | Time: 2.86s"
+    ],
+    [
+      "B",
+      "  Explanation (first 300 chars):\n    WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium risk conjunction with a minimum distance of 19.76\u202fkm and a time to closest approach of 4.90\u202fhours. The relatively short distance and imminent encounter raise concern, but the risk score of 6..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 3] Maneuver Options"
+    ],
+    [
+      "B",
+      "  Generated 3 options | Time: 5.95s"
+    ],
+    [
+      "B",
+      "    mnv_66154_1: small burn | \u0394V=6.722 m/s | Fuel=1.5555 kg | Sep=21.856 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with STARLINK-31898 (NORAD ID:..."
+    ],
+    [
+      "B",
+      "    mnv_66154_2: medium burn | \u0394V=16.806 m/s | Fuel=3.8797 kg | Sep=24.856 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with STARLINK-37307 (NORAD ID:..."
+    ],
+    [
+      "B",
+      "    mnv_66154_3: large burn | \u0394V=40.335 m/s | Fuel=9.2608 kg | Sep=31.855 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with STARLINK-36465 (NORAD ID:..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 4] Trade-off Analysis"
+    ],
+    [
+      "B",
+      "  Recommended: mnv_66154_2 | Time: 0.51s"
+    ],
+    [
+      "B",
+      "    mnv_66154_2: score=50.80/100 (medium burn)"
+    ],
+    [
+      "B",
+      "    mnv_66154_1: score=0.00/100 (small burn)"
+    ],
+    [
+      "B",
+      "    mnv_66154_3: score=0.00/100 (large burn)"
+    ],
+    [
+      "B",
+      "  \u26a0 DISQUALIFIED OPTIONS: ['mnv_66154_1', 'mnv_66154_3']"
+    ],
+    [
+      "B",
+      "  Reasoning: Maneuver option 'medium burn' (mnv_66154_2) is recommended with a composite score of 50.8/100. It requires a Delta-V of 16.806 m/s, consuming 3.8797 kg of fuel, and increases the closest approach separation to 24.856 km. Option 'small burn' (mnv_66154_1) achieved 21.856 km separation but was disqual..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 5] Trajectory Visualization"
+    ],
+    [
+      "B",
+      "  Path points: 121 | Time: 0.70s"
+    ],
+    [
+      "B",
+      "  Danger zone center: [-2891.0399, -5888.9122, -1949.2056] (radius=19.760 km)"
+    ],
+    [
+      "B",
+      "  Maneuver path: 121 points (divergence visible)"
+    ],
+    [
+      "B",
+      "\n  [Pillar 6] Human-in-the-Loop Approval"
+    ],
+    [
+      "B",
+      "  Preview token obtained | Time: 0.38s"
+    ],
+    [
+      "B",
+      "  Option: medium burn | \u0394V=16.806 m/s | Fuel=3.8797 kg"
+    ],
+    [
+      "B",
+      "  \u2713 APPROVED by validator_1 at 2026-08-20T10:37:20.574121Z | Time: 1.34s"
+    ],
+    [
+      "B",
+      "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "  CANDIDATE 2: STARLINK-1446 (NORAD 45663)"
+    ],
+    [
+      "B",
+      "  Protected Asset: 25544"
+    ],
+    [
+      "B",
+      "  Screened Min Distance: 12.136 km"
+    ],
+    [
+      "B",
+      "  TCA: 2026-08-21T15:27:03.816655Z"
+    ],
+    [
+      "B",
+      "  Risk Score: 64.9900"
+    ],
+    [
+      "B",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "\n  [Pillar 2] Risk Explanation"
+    ],
+    [
+      "B",
+      "  Source: groq | Time: 2.95s"
+    ],
+    [
+      "B",
+      "  Explanation (first 300 chars):\n    WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium risk conjunction for STARLINK-1446, with a minimum distance of 12.136 km and a time to closest approach of 28.83 hours. The risk is rated medium because the close approach distance is relati..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 3] Maneuver Options"
+    ],
+    [
+      "B",
+      "  Generated 3 options | Time: 5.13s"
+    ],
+    [
+      "B",
+      "    mnv_45663_1: small burn | \u0394V=6.535 m/s | Fuel=1.5123 kg | Sep=14.214 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with BRO-8 (NORAD ID: 55011) a..."
+    ],
+    [
+      "B",
+      "    mnv_45663_2: medium burn | \u0394V=16.339 m/s | Fuel=3.7722 kg | Sep=17.212 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with BRO-8 (NORAD ID: 55011) a..."
+    ],
+    [
+      "B",
+      "    mnv_45663_3: large burn | \u0394V=39.213 m/s | Fuel=9.0056 kg | Sep=24.209 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with STARLINK-36369 (NORAD ID:..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 4] Trade-off Analysis"
+    ],
+    [
+      "B",
+      "  Recommended: mnv_45663_1 | Time: 0.51s"
+    ],
+    [
+      "B",
+      "    mnv_45663_1: score=55.33/100 (small burn)"
+    ],
+    [
+      "B",
+      "    mnv_45663_2: score=52.10/100 (medium burn)"
+    ],
+    [
+      "B",
+      "    mnv_45663_3: score=29.43/100 (large burn)"
+    ],
+    [
+      "B",
+      "  Reasoning: Maneuver option 'small burn' (mnv_45663_1) is recommended with a composite score of 55.3/100. It requires a Delta-V of 6.535 m/s, consuming 1.5123 kg of fuel, and increases the closest approach separation to 14.214 km. Option 'medium burn' was ranked lower with a score of 52.1/100, providing 17.212 ..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 5] Trajectory Visualization"
+    ],
+    [
+      "B",
+      "  Path points: 121 | Time: 0.74s"
+    ],
+    [
+      "B",
+      "  Danger zone center: [-986.1721, -4259.7187, -5202.165] (radius=12.136 km)"
+    ],
+    [
+      "B",
+      "  Maneuver path: 121 points (divergence visible)"
+    ],
+    [
+      "B",
+      "\n  [Pillar 6] Human-in-the-Loop Approval"
+    ],
+    [
+      "B",
+      "  Preview token obtained | Time: 0.36s"
+    ],
+    [
+      "B",
+      "  Option: small burn | \u0394V=6.535 m/s | Fuel=1.5123 kg"
+    ],
+    [
+      "B",
+      "  \u2713 APPROVED by validator_2 at 2026-08-20T10:37:31.624295Z | Time: 1.35s"
+    ],
+    [
+      "B",
+      "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "  CANDIDATE 3: STARLINK-5479 (NORAD 55662)"
+    ],
+    [
+      "B",
+      "  Protected Asset: 26998"
+    ],
+    [
+      "B",
+      "  Screened Min Distance: 17.492 km"
+    ],
+    [
+      "B",
+      "  TCA: 2026-08-21T10:17:07.515640Z"
+    ],
+    [
+      "B",
+      "  Risk Score: 60.7200"
+    ],
+    [
+      "B",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "\n  [Pillar 2] Risk Explanation"
+    ],
+    [
+      "B",
+      "  Source: groq | Time: 2.54s"
+    ],
+    [
+      "B",
+      "  Explanation (first 300 chars):\n    WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium\u2011risk conjunction involving STARLINK\u20115479, which will approach to within 17.492\u202fkm in about 23.66\u202fhours; the risk score of 60.72 places it in the medium category because the distance is relat..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 3] Maneuver Options"
+    ],
+    [
+      "B",
+      "  Generated 3 options | Time: 4.24s"
+    ],
+    [
+      "B",
+      "    mnv_55662_1: small burn | \u0394V=6.699 m/s | Fuel=1.5501 kg | Sep=19.476 km | 2nd conj: None"
+    ],
+    [
+      "B",
+      "    mnv_55662_2: medium burn | \u0394V=16.747 m/s | Fuel=3.8661 kg | Sep=22.474 km | 2nd conj: None"
+    ],
+    [
+      "B",
+      "    mnv_55662_3: large burn | \u0394V=40.193 m/s | Fuel=9.2286 kg | Sep=29.471 km | 2nd conj: Warning: Maneuver creates a secondary conjunction with STARLINK-5856 (NORAD ID: ..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 4] Trade-off Analysis"
+    ],
+    [
+      "B",
+      "  Recommended: mnv_55662_1 | Time: 0.58s"
+    ],
+    [
+      "B",
+      "    mnv_55662_1: score=75.58/100 (small burn)"
+    ],
+    [
+      "B",
+      "    mnv_55662_2: score=68.93/100 (medium burn)"
+    ],
+    [
+      "B",
+      "    mnv_55662_3: score=27.93/100 (large burn)"
+    ],
+    [
+      "B",
+      "  Reasoning: Maneuver option 'small burn' (mnv_55662_1) is recommended with a composite score of 75.6/100. It requires a Delta-V of 6.699 m/s, consuming 1.5501 kg of fuel, and increases the closest approach separation to 19.476 km. Option 'medium burn' was ranked lower with a score of 68.9/100, providing 22.474 ..."
+    ],
+    [
+      "B",
+      "\n  [Pillar 5] Trajectory Visualization"
+    ],
+    [
+      "B",
+      "  Path points: 121 | Time: 0.72s"
+    ],
+    [
+      "B",
+      "  Danger zone center: [-1744.7057, 4049.7975, -5381.4144] (radius=17.492 km)"
+    ],
+    [
+      "B",
+      "  Maneuver path: 121 points (divergence visible)"
+    ],
+    [
+      "B",
+      "\n  [Pillar 6] Human-in-the-Loop Approval"
+    ],
+    [
+      "B",
+      "  Preview token obtained | Time: 0.34s"
+    ],
+    [
+      "B",
+      "  Option: small burn | \u0394V=6.699 m/s | Fuel=1.5501 kg"
+    ],
+    [
+      "B",
+      "  \u2713 APPROVED by validator_3 at 2026-08-20T10:37:41.405254Z | Time: 1.33s"
+    ],
+    [
+      "B",
+      "\n\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "  [Pillar 7] Audit Trail Replay & Integrity Verification"
+    ],
+    [
+      "B",
+      "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "B",
+      "  Total audit entries: 17 | Time: 0.19s"
+    ],
+    [
+      "B",
+      "  Last 15 entries:"
+    ],
+    [
+      "B",
+      "    #476: Pillar 2 | explanation_generated | candidate=66154 | hash=83b13beebfdc..."
+    ],
+    [
+      "B",
+      "    #477: Pillar 3 | maneuver_options_generated | candidate=66154 | hash=ae80c80bc745..."
+    ],
+    [
+      "B",
+      "    #478: Pillar 4 | comparison_ranked | candidate=66154 | hash=d75a8c0f3f15..."
+    ],
+    [
+      "B",
+      "    #479: Pillar 5 | visualization_requested | candidate=66154 | hash=0ce584960eeb..."
+    ],
+    [
+      "B",
+      "    #480: Pillar 6 | approval_granted | candidate=66154 | hash=28830bd30eda..."
+    ],
+    [
+      "B",
+      "    #481: Pillar 2 | explanation_generated | candidate=45663 | hash=d56678ff6578..."
+    ],
+    [
+      "B",
+      "    #482: Pillar 3 | maneuver_options_generated | candidate=45663 | hash=6381a15c4729..."
+    ],
+    [
+      "B",
+      "    #483: Pillar 4 | comparison_ranked | candidate=45663 | hash=410459956e25..."
+    ],
+    [
+      "B",
+      "    #484: Pillar 5 | visualization_requested | candidate=45663 | hash=74b4278e7cd7..."
+    ],
+    [
+      "B",
+      "    #485: Pillar 6 | approval_granted | candidate=45663 | hash=1adfbacac94f..."
+    ],
+    [
+      "B",
+      "    #486: Pillar 2 | explanation_generated | candidate=55662 | hash=837a10f5665d..."
+    ],
+    [
+      "B",
+      "    #487: Pillar 3 | maneuver_options_generated | candidate=55662 | hash=30b2f5951e59..."
+    ],
+    [
+      "B",
+      "    #488: Pillar 4 | comparison_ranked | candidate=55662 | hash=a972cbdf626a..."
+    ],
+    [
+      "B",
+      "    #489: Pillar 5 | visualization_requested | candidate=55662 | hash=8f821981381a..."
+    ],
+    [
+      "B",
+      "    #490: Pillar 6 | approval_granted | candidate=55662 | hash=3bd6ed3e6e8b..."
+    ],
+    [
+      "B",
+      "  Chain Integrity: valid=True, broken_at=None | Time: 0.18s"
+    ],
+    [
+      "C",
+      "\n======================================================================"
+    ],
+    [
+      "C",
+      "  PART C \u2014 Load and Latency Profiling"
+    ],
+    [
+      "C",
+      "======================================================================"
+    ],
+    [
+      "C",
+      "\n  /triage/refresh (5 assets, 16,073 sats, threshold=50km)"
+    ],
+    [
+      "C",
+      "    Cold cache: 5.69s"
+    ],
+    [
+      "C",
+      "    Warm cache: 5.89s"
+    ],
+    [
+      "C",
+      "\n  Full 6-endpoint chain for candidate 66154:"
+    ],
+    [
+      "C",
+      "    Step           Time (s)     Flag"
+    ],
+    [
+      "C",
+      "    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "C",
+      "    explain           0.173         "
+    ],
+    [
+      "C",
+      "    maneuver          0.164         "
+    ],
+    [
+      "C",
+      "    compare           0.506         "
+    ],
+    [
+      "C",
+      "    visualize         0.994         "
+    ],
+    [
+      "C",
+      "    preview           0.421         "
+    ],
+    [
+      "C",
+      "    approve           1.400         "
+    ],
+    [
+      "C",
+      "    \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+    ],
+    [
+      "C",
+      "    TOTAL             3.658"
+    ],
+    [
+      "D",
+      "\n======================================================================"
+    ],
+    [
+      "D",
+      "  PART D \u2014 Edge Case Validation"
+    ],
+    [
+      "D",
+      "======================================================================"
+    ],
+    [
+      "D",
+      "\n--- D1: Zero Threats at Tight Threshold (5 km) ---"
+    ],
+    [
+      "D",
+      "  Alerts at 5 km threshold for THEMIS-D (HEO): 0"
+    ],
+    [
+      "D",
+      "  \u2713 PASS: Clean zero-alert response \u2014 no downstream errors."
+    ],
+    [
+      "D",
+      "\n--- D2: Dual Approval + Audit Distinction ---"
+    ],
+    [
+      "D",
+      "  Alert-A: Approved candidate 68147 with mnv_68147_1"
+    ],
+    [
+      "D",
+      "  Alert-B: Approved candidate 47385 with mnv_47385_2"
+    ],
+    [
+      "D",
+      "  Audit chain after dual approval: valid=True"
+    ],
+    [
+      "D",
+      "  \u2713 PASS: Dual approval correctly recorded, audit chain intact."
+    ],
+    [
+      "D",
+      "\n--- D3: Stale Candidate After Superseding Refresh ---"
+    ],
+    [
+      "D",
+      "  Old candidate 43585 no longer in active alerts after tight refresh."
+    ],
+    [
+      "D",
+      "  /explain/43585 status: 404"
+    ],
+    [
+      "D",
+      "  \u2713 PASS: Stale candidate correctly rejected with 404."
+    ]
+  ],
+  "narratives": [
+    {
+      "candidate_id": "66154",
+      "candidate_name": "STARLINK-34625",
+      "protected_asset_id": "20580",
+      "min_distance_km": 19.76,
+      "risk_score": 69.27,
+      "tca": "2026-08-20T15:31:05.024778Z",
+      "explanation": "WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium risk conjunction with a minimum distance of 19.76\u202fkm and a time to closest approach of 4.90\u202fhours. The relatively short distance and imminent encounter raise concern, but the risk score of 69.27 out of 100 falls just below typical high\u2011risk thresholds.",
+      "explain_time": 2.8584403339991695,
+      "options": [
+        {
+          "option_id": "mnv_66154_1",
+          "label": "small burn",
+          "delta_v_ms": 6.722,
+          "fuel_cost_kg": 1.5555,
+          "resulting_min_distance_km": 21.856,
+          "resulting_distance_cw": 21.76,
+          "resulting_distance_sgp4": 21.856,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5418,
+            -0.6906,
+            0.4791
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with STARLINK-31898 (NORAD ID: 59905) at minimum distance 12.48 km on 2026-08-20 17:13:05 UTC."
+        },
+        {
+          "option_id": "mnv_66154_2",
+          "label": "medium burn",
+          "delta_v_ms": 16.806,
+          "fuel_cost_kg": 3.8797,
+          "resulting_min_distance_km": 24.856,
+          "resulting_distance_cw": 24.76,
+          "resulting_distance_sgp4": 24.856,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5418,
+            -0.6906,
+            0.4791
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with STARLINK-37307 (NORAD ID: 68681) at minimum distance 29.58 km on 2026-08-20 16:34:05 UTC."
+        },
+        {
+          "option_id": "mnv_66154_3",
+          "label": "large burn",
+          "delta_v_ms": 40.335,
+          "fuel_cost_kg": 9.2608,
+          "resulting_min_distance_km": 31.855,
+          "resulting_distance_cw": 31.76,
+          "resulting_distance_sgp4": 31.855,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5418,
+            -0.6906,
+            0.4791
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with STARLINK-36465 (NORAD ID: 67423) at minimum distance 16.77 km on 2026-08-20 17:12:05 UTC."
+        }
+      ],
+      "maneuver_time": 5.954547166998964,
+      "comparison": {
+        "candidate_id": "66154",
+        "ranked_options": [
+          {
+            "option_id": "mnv_66154_2",
+            "label": "medium burn",
+            "composite_score": 50.8
+          },
+          {
+            "option_id": "mnv_66154_1",
+            "label": "small burn",
+            "composite_score": 0.0
+          },
+          {
+            "option_id": "mnv_66154_3",
+            "label": "large burn",
+            "composite_score": 0.0
+          }
+        ],
+        "recommended_option_id": "mnv_66154_2",
+        "reasoning": "Maneuver option 'medium burn' (mnv_66154_2) is recommended with a composite score of 50.8/100. It requires a Delta-V of 16.806 m/s, consuming 3.8797 kg of fuel, and increases the closest approach separation to 24.856 km. Option 'small burn' (mnv_66154_1) achieved 21.856 km separation but was disqualified because it creates a secondary conjunction with a minimum distance of 12.48 km, which is closer than the original threat separation of 19.76 km. Option 'large burn' (mnv_66154_3) achieved 31.855 km separation but was disqualified because it creates a secondary conjunction with a minimum distance of 16.77 km, which is closer than the original threat separation of 19.76 km."
+      },
+      "compare_time": 0.5066422499985492,
+      "visualize_time": 0.7034845829984988,
+      "approval": {
+        "candidate_id": "66154",
+        "chosen_option_id": "mnv_66154_2",
+        "approved_by": "validator_1",
+        "operator_role": "senior",
+        "confirmation_token": "c46ba7a3-c9c6-4f98-b34d-5457795acd32",
+        "approved_at": "2026-08-20T10:37:20.574121Z",
+        "status": "approved",
+        "delta_v_ms": 16.806,
+        "fuel_cost_kg": 3.8797
+      },
+      "approve_time": 1.7210778340013348
+    },
+    {
+      "candidate_id": "45663",
+      "candidate_name": "STARLINK-1446",
+      "protected_asset_id": "25544",
+      "min_distance_km": 12.136,
+      "risk_score": 64.99,
+      "tca": "2026-08-21T15:27:03.816655Z",
+      "explanation": "WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium risk conjunction for STARLINK-1446, with a minimum distance of 12.136 km and a time to closest approach of 28.83 hours. The risk is rated medium because the close approach distance is relatively small and the risk score of 64.99 places it in the mid\u2011range of the scoring scale.",
+      "explain_time": 2.951091916002042,
+      "options": [
+        {
+          "option_id": "mnv_45663_1",
+          "label": "small burn",
+          "delta_v_ms": 6.535,
+          "fuel_cost_kg": 1.5123,
+          "resulting_min_distance_km": 14.214,
+          "resulting_distance_cw": 14.136,
+          "resulting_distance_sgp4": 14.214,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.7902,
+            0.2676,
+            -0.5514
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with BRO-8 (NORAD ID: 55011) at minimum distance 22.69 km on 2026-08-21 15:42:03 UTC."
+        },
+        {
+          "option_id": "mnv_45663_2",
+          "label": "medium burn",
+          "delta_v_ms": 16.339,
+          "fuel_cost_kg": 3.7722,
+          "resulting_min_distance_km": 17.212,
+          "resulting_distance_cw": 17.136,
+          "resulting_distance_sgp4": 17.212,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.7902,
+            0.2676,
+            -0.5514
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with BRO-8 (NORAD ID: 55011) at minimum distance 28.84 km on 2026-08-21 15:42:03 UTC."
+        },
+        {
+          "option_id": "mnv_45663_3",
+          "label": "large burn",
+          "delta_v_ms": 39.213,
+          "fuel_cost_kg": 9.0056,
+          "resulting_min_distance_km": 24.209,
+          "resulting_distance_cw": 24.136,
+          "resulting_distance_sgp4": 24.209,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.7902,
+            0.2676,
+            -0.5514
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with STARLINK-36369 (NORAD ID: 67723) at minimum distance 18.26 km on 2026-08-21 17:12:03 UTC."
+        }
+      ],
+      "maneuver_time": 5.129007332998299,
+      "comparison": {
+        "candidate_id": "45663",
+        "ranked_options": [
+          {
+            "option_id": "mnv_45663_1",
+            "label": "small burn",
+            "composite_score": 55.33
+          },
+          {
+            "option_id": "mnv_45663_2",
+            "label": "medium burn",
+            "composite_score": 52.1
+          },
+          {
+            "option_id": "mnv_45663_3",
+            "label": "large burn",
+            "composite_score": 29.43
+          }
+        ],
+        "recommended_option_id": "mnv_45663_1",
+        "reasoning": "Maneuver option 'small burn' (mnv_45663_1) is recommended with a composite score of 55.3/100. It requires a Delta-V of 6.535 m/s, consuming 1.5123 kg of fuel, and increases the closest approach separation to 14.214 km. Option 'medium burn' was ranked lower with a score of 52.1/100, providing 17.212 km of separation for 3.7722 kg of fuel (incurring a secondary conjunction risk of 28.84 km). Option 'large burn' was ranked lower with a score of 29.4/100, providing 24.209 km of separation for 9.0056 kg of fuel (incurring a secondary conjunction risk of 18.26 km)."
+      },
+      "compare_time": 0.514555958998244,
+      "visualize_time": 0.7408423750021029,
+      "approval": {
+        "candidate_id": "45663",
+        "chosen_option_id": "mnv_45663_1",
+        "approved_by": "validator_2",
+        "operator_role": "senior",
+        "confirmation_token": "85a153ae-abd2-4871-88a2-6793a7864767",
+        "approved_at": "2026-08-20T10:37:31.624295Z",
+        "status": "approved",
+        "delta_v_ms": 6.535,
+        "fuel_cost_kg": 1.5123
+      },
+      "approve_time": 1.7147835410032712
+    },
+    {
+      "candidate_id": "55662",
+      "candidate_name": "STARLINK-5479",
+      "protected_asset_id": "26998",
+      "min_distance_km": 17.492,
+      "risk_score": 60.72,
+      "tca": "2026-08-21T10:17:07.515640Z",
+      "explanation": "WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old). This is a medium\u2011risk conjunction involving STARLINK\u20115479, which will approach to within 17.492\u202fkm in about 23.66\u202fhours; the risk score of 60.72 places it in the medium category because the distance is relatively close and the time to closest approach is short enough to require monitoring, though it does not exceed typical high\u2011risk thresholds.",
+      "explain_time": 2.5430572500008566,
+      "options": [
+        {
+          "option_id": "mnv_55662_1",
+          "label": "small burn",
+          "delta_v_ms": 6.699,
+          "fuel_cost_kg": 1.5501,
+          "resulting_min_distance_km": 19.476,
+          "resulting_distance_cw": 19.492,
+          "resulting_distance_sgp4": 19.476,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5548,
+            -0.3859,
+            -0.737
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": null
+        },
+        {
+          "option_id": "mnv_55662_2",
+          "label": "medium burn",
+          "delta_v_ms": 16.747,
+          "fuel_cost_kg": 3.8661,
+          "resulting_min_distance_km": 22.474,
+          "resulting_distance_cw": 22.492,
+          "resulting_distance_sgp4": 22.474,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5548,
+            -0.3859,
+            -0.737
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": null
+        },
+        {
+          "option_id": "mnv_55662_3",
+          "label": "large burn",
+          "delta_v_ms": 40.193,
+          "fuel_cost_kg": 9.2286,
+          "resulting_min_distance_km": 29.471,
+          "resulting_distance_cw": 29.492,
+          "resulting_distance_sgp4": 29.471,
+          "cw_divergence_flag": false,
+          "burn_direction": [
+            0.5548,
+            -0.3859,
+            -0.737
+          ],
+          "time_to_burn_execution_s": 300.0,
+          "secondary_conjunction_warning": "Warning: Maneuver creates a secondary conjunction with STARLINK-5856 (NORAD ID: 55914) at minimum distance 20.46 km on 2026-08-21 11:55:07 UTC."
+        }
+      ],
+      "maneuver_time": 4.243556500001432,
+      "comparison": {
+        "candidate_id": "55662",
+        "ranked_options": [
+          {
+            "option_id": "mnv_55662_1",
+            "label": "small burn",
+            "composite_score": 75.58
+          },
+          {
+            "option_id": "mnv_55662_2",
+            "label": "medium burn",
+            "composite_score": 68.93
+          },
+          {
+            "option_id": "mnv_55662_3",
+            "label": "large burn",
+            "composite_score": 27.93
+          }
+        ],
+        "recommended_option_id": "mnv_55662_1",
+        "reasoning": "Maneuver option 'small burn' (mnv_55662_1) is recommended with a composite score of 75.6/100. It requires a Delta-V of 6.699 m/s, consuming 1.5501 kg of fuel, and increases the closest approach separation to 19.476 km. Option 'medium burn' was ranked lower with a score of 68.9/100, providing 22.474 km of separation for 3.8661 kg of fuel. Option 'large burn' was ranked lower with a score of 27.9/100, providing 29.471 km of separation for 9.2286 kg of fuel (incurring a secondary conjunction risk of 20.46 km)."
+      },
+      "compare_time": 0.5838620829999854,
+      "visualize_time": 0.72107374999905,
+      "approval": {
+        "candidate_id": "55662",
+        "chosen_option_id": "mnv_55662_1",
+        "approved_by": "validator_3",
+        "operator_role": "senior",
+        "confirmation_token": "ff9a1651-6f24-44c3-9ae1-0fe83c316041",
+        "approved_at": "2026-08-20T10:37:41.405254Z",
+        "status": "approved",
+        "delta_v_ms": 6.699,
+        "fuel_cost_kg": 1.5501
+      },
+      "approve_time": 1.673294166001142
+    }
+  ],
+  "cold_time": 5.69456720800008,
+  "warm_time": 5.88775758400152,
+  "total_alerts": 41
+}

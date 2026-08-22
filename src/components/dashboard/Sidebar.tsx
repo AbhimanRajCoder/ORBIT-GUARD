@@ -10,6 +10,7 @@ import {
   Zap,
   MessageSquare,
   Globe,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusDot } from "@/components/ui/StatusDot";
@@ -29,6 +30,7 @@ const navItems: NavItem[] = [
   { name: "Maneuvers", href: "/maneuvers", icon: Zap },
   { name: "AI Briefing", href: "/ai-briefing", icon: MessageSquare },
   { name: "3D Live Map", href: "/map", icon: Globe },
+  { name: "Audit Trail", href: "/audit", icon: Shield },
 ];
 
 export function Sidebar() {
