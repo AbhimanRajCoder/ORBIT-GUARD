@@ -17,6 +17,7 @@
 
 ## Table of Contents
 
+<<<<<<< HEAD
 1. [Project Overview](#1-project-overview)
 2. [Tech Stack](#2-tech-stack)
 3. [System Architecture](#3-system-architecture)
@@ -30,6 +31,28 @@
 11. [Developer Audit Mode](#11-developer-audit-mode)
 12. [Getting Started](#12-getting-started)
 13. [Verification & Testing](#13-verification--testing)
+=======
+1. [Project Overview](#1-project-overview)  
+2. [The Five System Pillars](#2-the-five-system-pillars)  
+3. [Key Features](#3-key-features)  
+4. [Tech Stack](#4-tech-stack)  
+5. [System Architecture](#5-system-architecture)  
+6. [Physics Engine and Mathematical Formulations](#6-physics-engine-and-mathematical-formulations)  
+   - 6.1 [SGP4 Orbital Propagation and ECEF Rotation](#61-sgp4-orbital-propagation-and-ecef-rotation)  
+   - 6.2 [Akella-Alfriend 2D Collision Probability](#62-akella-alfriend-2d-collision-probability)  
+   - 6.3 [Clohessy-Wiltshire relative-motion Maneuver Solver](#63-clohessy-wiltshire-relative-motion-maneuver-solver)  
+   - 6.4 [Tsiolkovsky Propellant Mass Calculation](#64-tsiolkovsky-propellant-mass-calculation)  
+   - 6.5 [Multi-Objective Trade-Off and Optimization](#65-multi-objective-trade-off-and-optimization)  
+7. [Scientific Validation Portal](#7-scientific-validation-portal)  
+   - 7.1 [How to Run the Portal](#71-how-to-run-the-portal)  
+   - 7.2 [Trajectory Reconstruction Validation Method](#72-trajectory-reconstruction-validation-method)  
+8. [3D Orbit Visualizer](#8-3d-orbit-visualizer)  
+9. [Developer Audit Mode](#9-developer-audit-mode)  
+10. [Pages & Routes](#10-pages--routes)  
+11. [Data Model](#11-data-model)  
+12. [Getting Started](#12-getting-started)  
+13. [Verification and Integration Test Suite](#13-verification-and-integration-test-suite)  
+>>>>>>> 964e2e6 (upd)
 
 ---
 
@@ -54,6 +77,7 @@ The system implements a **7-step closed-loop pipeline** that takes raw orbital d
 
 **Step 2 — Propagate:** Each TLE is fed through the SGP4/SDP4 propagator to compute position and velocity vectors in the TEME (True Equator, Mean Equinox) inertial frame at arbitrary future times.
 
+<<<<<<< HEAD
 **Step 3 — Detect:** Conjunction screening runs a two-pass filter — orbital envelope pre-filtering followed by 60-second fine screening over a 48-hour window — to identify objects that approach within a configurable distance threshold.
 
 **Step 4 — Compute Pc:** For each flagged conjunction, the Akella-Alfriend 2D analytical collision probability model is evaluated on the encounter plane to quantify the actual collision risk.
@@ -63,6 +87,15 @@ The system implements a **7-step closed-loop pipeline** that takes raw orbital d
 **Step 6 — Authorize Burn:** An operator reviews, previews, and authorizes the burn through a short-lived SHA-256 confirmation token with role-based access (junior/senior).
 
 **Step 7 — Render 3D:** The nominal orbits, post-burn evasive trajectory, and danger zone sphere are rendered in a photorealistic WebGL globe with ECEF coordinate conversion.
+=======
+To ensure mathematical precision, all calculations in OrbitGuard conform strictly to standard astrodynamics models. Any underscore (`_`) representing a subscript is encapsulated inside math mode ($...$ or $$...$$), and literal underscores in text labels inside math mode are escaped as `\_` (e.g., `\text{achieved\_sgp4}`).
+
+### Constants Used
+
+*   $R_e$ = $6378.137\text{ km}$ (Earth equatorial radius)
+*   $GM$ = $398600.4418\text{ km}^3/\text{s}^2$ (Earth gravitational parameter $\mu$)
+*   $g_0$ = $9.80665\text{ m/s}^2$ (Standard gravity acceleration)
+>>>>>>> 964e2e6 (upd)
 
 ---
 
@@ -70,6 +103,7 @@ The system implements a **7-step closed-loop pipeline** that takes raw orbital d
 
 ### Frontend
 
+<<<<<<< HEAD
 | Technology | Version | Role |
 |---|---|---|
 | **Next.js** (App Router) | 16.2 | Framework with Server Components, API Routes as backend proxy |
@@ -232,9 +266,24 @@ The collision probability calculation follows the Akella-Alfriend 2D analytical 
 #### Step 1: Define the Encounter Frame
 
 At TCA, the encounter plane basis vectors are constructed from the relative position (Δr) and relative velocity (Δv):
+=======
+To align coordinates with a fixed Earth mesh in Three.js, ECI positions are rotated into the Earth-Centered Earth-Fixed (ECEF) rotating frame using Greenwich Mean Sidereal Time ($\theta_{\text{GMST}}$):
+$$\vec{r}_{\text{ECEF}}(t) = \mathbf{R}_z(\theta_{\text{GMST}}(t)) \, \vec{r}_{\text{TEME}}(t)$$
+$$\mathbf{R}_z(\theta) = \begin{pmatrix} \cos\theta & \sin\theta & 0 \\ -\sin\theta & \cos\theta & 0 \\ 0 & 0 & 1 \end{pmatrix}$$
+
+The geodetic coordinates (longitude $\lambda$, latitude $\phi$, altitude $h$) are then resolved relative to the WGS84 ellipsoid:
+$$\lambda = \text{atan2}(y_{\text{ECEF}}, x_{\text{ECEF}})$$
+$$\phi = \text{atan2}\left(z_{\text{ECEF}}, \sqrt{x_{\text{ECEF}}^2 + y_{\text{ECEF}}^2}\right)$$
+$$h = |\vec{r}_{\text{ECEF}}| - R_e$$
+
+---
+
+### 6.2 Akella-Alfriend 2D Collision Probability
+>>>>>>> 964e2e6 (upd)
 
 $$\hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|}, \qquad \hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|}, \qquad \hat{e}_y = \hat{e}_z \times \hat{e}_x$$
 
+<<<<<<< HEAD
 `ê_z` points along the relative velocity (the "speed" axis — the encounter zips through in milliseconds along this direction), while `ê_x` and `ê_y` span the **encounter plane** where the collision geometry matters.
 
 #### Step 2: Rotate RTN Covariance to ECI
@@ -245,6 +294,9 @@ Position uncertainty for each object is expressed in the local **Radial-Transver
 
 These are rotated to ECI using the outer-product formulation:
 
+=======
+The position covariances of the primary and secondary objects are rotated from their local Radial-Transverse-Normal (RTN) frames to ECI:
+>>>>>>> 964e2e6 (upd)
 $$\mathbf{C}_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)$$
 
 where `û_R`, `û_T`, `û_N` are the RTN basis vectors computed from each object's position and velocity. The two covariance matrices are then summed: $\mathbf{C}_{\text{combined}} = \mathbf{C}_A + \mathbf{C}_B$.
@@ -287,6 +339,7 @@ Pillar 2 takes the raw `ConjunctionCandidate` list from Pillar 1, computes risk 
 
 ---
 
+<<<<<<< HEAD
 ## 6. Pillar 3 — Evasive Maneuver Simulator
 
 ### The Problem
@@ -296,6 +349,9 @@ Once a conjunction is detected and scored, operators need to evaluate **what it 
 ### Technical Approach: Clohessy-Wiltshire Relative-Motion Equations
 
 Relative motion between two objects in nearby circular orbits is modeled using the **Clohessy-Wiltshire (Hill's) equations**. Given an impulsive velocity change $\Delta\vec{v} = [\Delta v_R, \Delta v_T, \Delta v_N]^T$ applied in the Hill frame at $\Delta t = 0$, the relative position at TCA ($t = \Delta t$) is:
+=======
+### 6.3 Clohessy-Wiltshire relative-motion Maneuver Solver
+>>>>>>> 964e2e6 (upd)
 
 $$x(\Delta t) = \frac{\Delta v_R}{n}\sin(n\Delta t) + \frac{2\Delta v_T}{n}\bigl(1 - \cos(n\Delta t)\bigr)$$
 
@@ -303,7 +359,12 @@ $$y(\Delta t) = \frac{2\Delta v_R}{n}\bigl(\cos(n\Delta t) - 1\bigr) + \frac{\De
 
 $$z(\Delta t) = \frac{\Delta v_N}{n}\sin(n\Delta t)$$
 
+<<<<<<< HEAD
 where the mean motion $n = \sqrt{GM / a^3}$ is in rad/s, and $\Delta v_R$, $\Delta v_T$, $\Delta v_N$ are the radial, transverse (in-track), and normal (cross-track) impulse components.
+=======
+Evasive maneuvers are target-solved using the transverse burn ratio:
+$$\Delta v_T \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{3 \Delta t} \quad (\text{m/s})$$
+>>>>>>> 964e2e6 (upd)
 
 **Implementation:** [`orbital_mechanics.py:build_cw_state_transition()`](backend/app/services/orbital_mechanics.py) constructs the full 6×6 CW state transition matrix split into four 3×3 blocks ($\Phi_{rr}$, $\Phi_{rv}$, $\Phi_{vr}$, $\Phi_{vv}$).
 
@@ -446,7 +507,11 @@ Pillar 4 takes the `ManeuverOption` list from Pillar 3 and produces a `RankedCom
 
 ---
 
+<<<<<<< HEAD
 ## 8. Pillar 5 — 3D Trajectory & Conjunction Visualization
+=======
+### 6.5 Multi-Objective Trade-Off and Optimization
+>>>>>>> 964e2e6 (upd)
 
 ### The Problem
 
@@ -523,7 +588,49 @@ Pillar 5 consumes the recommended maneuver option from Pillar 4 and the TCA info
 
 ---
 
+<<<<<<< HEAD
 ## 9. Constants & Formulas Reference Table
+=======
+## 7. Scientific Validation Portal
+
+This directory contains the OrbitGuard Scientific Validation Portal, an interactive Streamlit application designed for orbital analysts and space systems scientists.
+
+The portal provides empirical evidence that the SGP4 propagation algorithms, Clohessy-Wiltshire relative maneuver planning model, and frame rotation matrices in the backend are physically correct and consistent.
+
+### 7.1 How to Run the Portal
+
+1. **Install Dependencies**:
+   Install the required libraries listed in `requirements.txt`:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Run the Streamlit Application**:
+   Run the portal from the root directory:
+   ```bash
+   streamlit run validation_portal.py
+   ```
+
+3. **Populate TLE Snapshots**:
+   The validation portal reads historical TLE snapshots from:
+   `backend/data/tle_snapshots/`
+   
+   To add new snapshot files, save the parsed TLE cache payload from the CelesTrak endpoint into a JSON file named using the pattern:
+   `tle_cache_<ISO8601>.json` (e.g. `tle_cache_2026-08-21T12-00-00Z.json`).
+   
+   *Note: Two initial snapshots for the ISS (ZARYA) and several Starlink objects have been pre-generated to allow immediate test verification.*
+
+### 7.2 Trajectory Reconstruction Validation Method
+
+#### Verifying Propagation Accuracy via Trajectory Reconstruction
+Instead of validating our code against theoretical equations or static literature values, we use a live empirical technique called TLE-to-TLE cross-validation. We take two distinct TLE updates for the same satellite issued several days apart. We propagate the older TLE forward in time using SGP4 over the entire interval, and then propagate the newer TLE backward/forward across the same window.
+
+If our underlying mathematics is correct—including SGP4 propagation, time conversions, and ECI rotating frame calculations—the two independent trajectories will converge on the same physical space in orbit. Any implementation bugs would cause the trajectories to diverge significantly. By showing that the two paths overlay precisely and remain within a tight tolerance (typically $<5\text{ km}$ drift over 48 hours), we prove that our coordinate system and propagation pipeline are physically correct and consistent.
+
+---
+
+## 8. 3D Orbit Visualizer
+>>>>>>> 964e2e6 (upd)
 
 ### Physical Constants
 
@@ -556,7 +663,11 @@ Pillar 5 consumes the recommended maneuver option from Pillar 4 and the TCA info
 
 ---
 
+<<<<<<< HEAD
 ## 10. Pages & Routes
+=======
+## 9. Developer Audit Mode
+>>>>>>> 964e2e6 (upd)
 
 ### Frontend Pages
 
@@ -597,7 +708,11 @@ Pillar 5 consumes the recommended maneuver option from Pillar 4 and the TCA info
 
 ---
 
+<<<<<<< HEAD
 ## 11. Developer Audit Mode
+=======
+## 10. Pages & Routes
+>>>>>>> 964e2e6 (upd)
 
 OrbitGuard implements a **Developer Audit Mode** toggle accessible on the maneuvers page. When active:
 
@@ -612,6 +727,15 @@ This feature exists because the entire system depends on **data fidelity** — e
 
 ---
 
+<<<<<<< HEAD
+=======
+## 11. Data Model
+
+See the TypeScript models defined in [`src/types/index.ts`](./src/types/index.ts) representing `Satellite`, `ConjunctionEvent`, and `ManeuverPlan`.
+
+---
+
+>>>>>>> 964e2e6 (upd)
 ## 12. Getting Started
 
 ### Prerequisites
@@ -670,7 +794,11 @@ python init_supabase.py
 
 ---
 
+<<<<<<< HEAD
 ## 13. Verification & Testing
+=======
+## 13. Verification and Integration Test Suite
+>>>>>>> 964e2e6 (upd)
 
 OrbitGuard includes a multi-tiered test suite powered by **Vitest** that validates physical correctness, coordinate frame alignment, and frontend-backend data contract fidelity.
 

@@ -9,7 +9,7 @@ export function Card({ className, accentStatus = null, children, ...props }: Car
   return (
     <div
       className={cn(
-        "bg-abyss border border-iron rounded-md p-4 relative overflow-hidden",
+        "bg-graphite border border-iron/30 rounded-[16px] p-5 relative overflow-hidden transition-all duration-300",
         {
           "border-l-[3px] border-l-orbit-cyan": accentStatus === "monitoring",
           "border-l-[3px] border-l-threat-amber": accentStatus === "caution",
@@ -27,7 +27,7 @@ export function Card({ className, accentStatus = null, children, ...props }: Car
 
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex flex-col space-y-1 mb-3", className)} {...props}>
+    <div className={cn("flex flex-col space-y-1.5 mb-4", className)} {...props}>
       {children}
     </div>
   );
@@ -37,7 +37,7 @@ export function CardTitle({ className, children, ...props }: React.HTMLAttribute
   return (
     <h3
       className={cn(
-        "font-display text-[15px] font-semibold text-bone tracking-wide uppercase",
+        "font-display text-[18px] font-light text-cloud tracking-tight",
         className
       )}
       {...props}
@@ -49,7 +49,7 @@ export function CardTitle({ className, children, ...props }: React.HTMLAttribute
 
 export function CardDescription({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn("font-body text-[12px] text-ash", className)} {...props}>
+    <p className={cn("font-body text-[13px] text-ash", className)} {...props}>
       {children}
     </p>
   );
@@ -57,7 +57,7 @@ export function CardDescription({ className, children, ...props }: React.HTMLAtt
 
 export function CardContent({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("font-body text-[14px] text-bone", className)} {...props}>
+    <div className={cn("font-body text-[14px] text-ash", className)} {...props}>
       {children}
     </div>
   );
@@ -65,7 +65,7 @@ export function CardContent({ className, children, ...props }: React.HTMLAttribu
 
 export function CardFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("flex items-center mt-4 pt-3 border-t border-iron", className)} {...props}>
+    <div className={cn("flex items-center mt-5 pt-4 border-t border-iron/20", className)} {...props}>
       {children}
     </div>
   );

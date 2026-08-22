@@ -26,6 +26,10 @@ export function propagateTLE(line1: string, line2: string, date: Date): ECIState
     if (typeof pos === "boolean" || typeof vel === "boolean" || !pos || !vel) {
       return null;
     }
+
+    if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z) || isNaN(vel.x) || isNaN(vel.y) || isNaN(vel.z)) {
+      return null;
+    }
     
     return {
       position: { x: pos.x, y: pos.y, z: pos.z },
@@ -49,6 +53,10 @@ export function propagateTLEToGeodetic(line1: string, line2: string, date: Date)
 
     const pos = positionAndVelocity.position;
     if (typeof pos === "boolean" || !pos) {
+      return null;
+    }
+
+    if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z)) {
       return null;
     }
     
@@ -98,7 +106,9 @@ export function generateOrbitalTrack(
     if (!positionAndVelocity) continue;
     const pos = positionAndVelocity.position;
     if (pos && typeof pos !== "boolean") {
-      points.push({ x: pos.x, y: pos.y, z: pos.z });
+      if (!isNaN(pos.x) && !isNaN(pos.y) && !isNaN(pos.z)) {
+        points.push({ x: pos.x, y: pos.y, z: pos.z });
+      }
     }
   }
 

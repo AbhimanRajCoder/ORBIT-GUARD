@@ -51,7 +51,7 @@ export function WorkflowPipeline() {
   const activeIndex = STEPS.findIndex((step) => step.pathMatch(pathname));
 
   return (
-    <div className="w-full bg-[#0d1527]/85 backdrop-blur-md border border-[#1b2a47] rounded-[6px] p-3 mb-6 flex items-center justify-between overflow-x-auto gap-4 scrollbar-none">
+    <div className="w-full bg-[#0d1527]/85 backdrop-blur-md border border-[#1b2a47] rounded-[6px] p-3 mt-[5%] mb-6 flex items-center justify-between overflow-x-auto gap-4 scrollbar-none">
       {STEPS.map((step, idx) => {
         const Icon = step.icon;
         const isActive = step.pathMatch(pathname);

@@ -6,7 +6,7 @@ import fs from "fs";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_CACHE = "/Users/abhimanraj/ORBIT-GUARD-NEW/backend/data/tle_cache_active.json";
+const BACKEND_CACHE = process.cwd() + "/backend/data/tle_cache_active.json";
 
 function inferOwner(name: string): string {
   const n = name.toUpperCase();

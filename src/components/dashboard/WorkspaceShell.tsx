@@ -53,8 +53,15 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <AlertBanner />
 
         {/* 4. Page Main Content Area */}
-        <main className="flex-1 pt-[56px] p-6 max-md:p-3 max-w-[1440px] mx-auto w-full overflow-y-auto">
-          <WorkflowPipeline />
+        <main
+          className={cn(
+            "flex-1 pt-[56px]",
+            pathname === "/map"
+              ? "w-full h-[calc(100vh-56px)] overflow-hidden relative"
+              : "p-6 max-md:p-3 max-w-[1440px] mx-auto w-full overflow-y-auto"
+          )}
+        >
+          {pathname !== "/map" && <WorkflowPipeline />}
           {children}
         </main>
       </div>

@@ -182,7 +182,7 @@ export function Topbar() {
 
   return (
     <header className={cn(
-      "h-[56px] bg-void border-b border-iron flex items-center justify-between px-6 max-md:px-3 fixed top-0 right-0 z-20 select-none transition-all duration-300 ease-in-out",
+      "h-[56px] bg-obsidian/85 backdrop-blur-md border-b border-iron/25 flex items-center justify-between px-6 max-md:px-3 fixed top-0 right-0 z-20 select-none transition-all duration-300 ease-in-out",
       sidebarMinimized ? "left-[64px]" : "left-[240px]",
       "max-md:left-0"
     )}>
@@ -199,7 +199,7 @@ export function Topbar() {
             <ChevronLeft className="h-3.5 w-3.5 text-orbit-cyan" />
           )}
         </button>
-        <h1 className="font-display text-[16px] font-bold text-bone tracking-wide uppercase">
+        <h1 className="font-display text-[18px] font-light text-cloud tracking-tight leading-none">
           {getPageTitle(pathname)}
         </h1>
       </div>
@@ -223,7 +223,7 @@ export function Topbar() {
               if (query.trim() && flatItems.length > 0) setIsOpen(true);
             }}
             placeholder="Search satellites, threat IDs, events..."
-            className="w-full bg-void border border-iron rounded-[4px] pl-9 pr-4 py-1.5 font-body text-[12px] text-bone placeholder-graphite focus:outline-none focus:border-orbit-cyan transition-colors"
+            className="w-full bg-abyss/60 border border-iron/30 rounded-[8px] pl-9 pr-4 py-1.5 font-body text-[12px] text-bone placeholder-fog focus:outline-none focus:border-pure transition-colors"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -241,12 +241,12 @@ export function Topbar() {
 
         {/* Dropdown Results List Panel */}
         {isOpen && flatItems.length > 0 && (
-          <div className="absolute top-full left-0 right-0 bg-void border border-iron shadow-2xl rounded-[4px] mt-1.5 overflow-hidden z-50 max-h-[360px] overflow-y-auto divide-y divide-iron/35">
+          <div className="absolute top-full left-0 right-0 bg-graphite border border-iron/30 shadow-2xl rounded-[8px] mt-1.5 overflow-hidden z-50 max-h-[360px] overflow-y-auto divide-y divide-iron/20">
             
             {/* Category: Satellites */}
             {results.satellites.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-orbit-cyan font-bold uppercase tracking-wider px-3.5 py-1.5 bg-[#0a0e1a]/85 border-b border-[#1c2b3a]/25">
+                <div className="flex items-center space-x-1.5 text-[9px] text-orbit-cyan font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
                   <SatIcon className="h-3 w-3" strokeWidth={2} />
                   <span>Fleet Assets</span>
                 </div>
@@ -279,7 +279,7 @@ export function Topbar() {
             {/* Category: Conjunction Events */}
             {results.events.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-threat-amber font-bold uppercase tracking-wider px-3.5 py-1.5 bg-[#0a0e1a]/85 border-b border-[#1c2b3a]/25">
+                <div className="flex items-center space-x-1.5 text-[9px] text-threat-amber font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
                   <AlertTriangle className="h-3 w-3" strokeWidth={2} />
                   <span>Conjunction Events</span>
                 </div>
@@ -308,7 +308,7 @@ export function Topbar() {
             {/* Category: Incident Logs */}
             {results.logs.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-ash font-bold uppercase tracking-wider px-3.5 py-1.5 bg-[#0a0e1a]/85 border-b border-[#1c2b3a]/25">
+                <div className="flex items-center space-x-1.5 text-[9px] text-ash font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
                   <ScrollText className="h-3 w-3" strokeWidth={2} />
                   <span>Incident Log Entries</span>
                 </div>
@@ -363,7 +363,7 @@ export function Topbar() {
           }}
           disabled={syncing}
           className={cn(
-            "flex items-center space-x-2 bg-void border border-iron rounded-[4px] px-3 py-1 cursor-pointer hover:bg-iron/20 transition-all text-ash hover:text-orbit-cyan",
+            "flex items-center space-x-2 bg-abyss/40 border border-iron/20 rounded-[8px] px-3 py-1 cursor-pointer hover:bg-steel/30 transition-all text-ash hover:text-orbit-cyan",
             syncing && "opacity-75 cursor-not-allowed text-orbit-cyan"
           )}
           title="Sync live orbital data from CelesTrak"
@@ -375,7 +375,7 @@ export function Topbar() {
         </button>
 
         {/* Live UTC Clock */}
-        <div className="flex items-center space-x-2 bg-void border border-iron rounded-[4px] px-3 py-1">
+        <div className="flex items-center space-x-2 bg-abyss/40 border border-iron/20 rounded-[8px] px-3 py-1">
           <Clock className="h-3.5 w-3.5 text-orbit-cyan" strokeWidth={1.5} />
           <span className="font-data text-[12px] text-bone tracking-wider">
             {utcTime || "LOADING UTC..."}
@@ -383,7 +383,7 @@ export function Topbar() {
         </div>
 
         {/* Notification Bell Badge */}
-        <button className="relative p-1.5 text-ash hover:text-bone hover:bg-[#151f38] rounded-[4px] transition-colors focus:outline-none cursor-pointer">
+        <button className="relative p-1.5 text-ash hover:text-bone hover:bg-steel/30 rounded-[8px] transition-all focus:outline-none cursor-pointer">
           <Bell className="h-4 w-4" strokeWidth={1.5} />
           {criticalCount > 0 && (
             <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-collision-red text-[9px] font-bold text-white leading-none">

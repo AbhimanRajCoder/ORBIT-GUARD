@@ -60,7 +60,7 @@ const ALL_STEPS: StepItem[] = [
 ];
 
 export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
-  const lifecycle = event.lifecycle || [];
+  const lifecycle = event?.lifecycle || [];
 
   // Find completed states
   const completedStates = new Set<string>();

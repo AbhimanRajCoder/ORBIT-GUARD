@@ -7,7 +7,7 @@ import path from "path";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_CACHE = "/Users/abhimanraj/ORBIT-GUARD-NEW/backend/data/tle_cache_active.json";
+const BACKEND_CACHE = process.cwd() + "/backend/data/tle_cache_active.json";
 
 function inferOwner(name: string): string {
   const n = name.toUpperCase();
@@ -65,8 +65,8 @@ export async function GET() {
       // But ALWAYS include the ones involved in conjunctions
       const conjunctionNoradIds = new Set<string>();
       backendAlerts.forEach(a => {
-        conjunctionNoradIds.add(a.protected_asset_id);
-        conjunctionNoradIds.add(a.candidate_id);
+        conjunctionNoradIds.add(String(a.protected_asset_id));
+        conjunctionNoradIds.add(String(a.candidate_id));
       });
 
       const processedSats = rawTLEs.filter(s => conjunctionNoradIds.has(s.norad_id) || Math.random() < 0.05).slice(0, 300);
@@ -159,6 +159,85 @@ export async function GET() {
         });
       });
     }
+
+    // 2.5 Ensure all backend alert satellites/debris are present in the final list
+    const generateMockTLE = (nId: number) => {
+      const noradStr = String(nId).padStart(5, '0');
+      const line1 = `1 ${noradStr}U 20000A   26234.54236111  .00001000  00000-0  50000-4 0  9993`;
+      const line2 = `2 ${noradStr}  51.6425 180.2345 0001000  45.1234 315.6789 15.54123456    08`;
+      return { line1, line2 };
+    };
+
+    backendAlerts.forEach(a => {
+      const assetId = parseInt(a.protected_asset_id, 10);
+      const candidateId = parseInt(a.candidate_id, 10);
+
+      const hasAsset = satellites.some(s => s.noradId === assetId);
+      if (!hasAsset) {
+        const mock = generateMockTLE(assetId);
+        const alt = 418.0;
+        const semiMajorAxis = 6378.1 + alt;
+        satellites.push({
+          id: `SAT-${assetId}`,
+          name: "ISS (ZARYA)",
+          noradId: assetId,
+          objectType: "satellite",
+          owner: "NASA/Roscosmos",
+          altitude: alt,
+          inclination: 51.64,
+          eccentricity: 0.001,
+          period: 92.0,
+          velocity: 7.67,
+          longitude: 0,
+          latitude: 0,
+          semiMajorAxis,
+          apogee: semiMajorAxis,
+          perigee: semiMajorAxis,
+          riskLevel: "green",
+          activeConjunctions: 0,
+          tleEpoch: now.toISOString(),
+          lastUpdated: now.toISOString(),
+          tleLine1: mock.line1,
+          tleLine2: mock.line2,
+          estimatedMassKg: 500,
+          fuelRemainingPct: 100
+        });
+      }
+
+      const hasCandidate = satellites.some(s => s.noradId === candidateId);
+      if (!hasCandidate) {
+        const mock = generateMockTLE(candidateId);
+        const isDebris = a.candidate_name.includes("DEBRIS") || a.candidate_name.includes("FRAGMENT") || a.candidate_name.includes("R/B") || a.candidate_name.includes("ROCKET");
+        const type = isDebris ? "debris" : "satellite";
+        const alt = 450.0;
+        const semiMajorAxis = 6378.1 + alt;
+        satellites.push({
+          id: `${type === "satellite" ? "SAT" : "DEBRIS"}-${candidateId}`,
+          name: a.candidate_name,
+          noradId: candidateId,
+          objectType: type,
+          owner: type === "satellite" ? inferOwner(a.candidate_name) : "Debris",
+          altitude: alt,
+          inclination: 51.64,
+          eccentricity: 0.001,
+          period: 93.0,
+          velocity: 7.65,
+          longitude: 0,
+          latitude: 0,
+          semiMajorAxis,
+          apogee: semiMajorAxis,
+          perigee: semiMajorAxis,
+          riskLevel: "green",
+          activeConjunctions: 0,
+          tleEpoch: now.toISOString(),
+          lastUpdated: now.toISOString(),
+          tleLine1: mock.line1,
+          tleLine2: mock.line2,
+          estimatedMassKg: 500,
+          fuelRemainingPct: 100
+        });
+      }
+    });
 
     // 3. Apply risk levels from active backend alerts
     backendAlerts.forEach(alert => {

@@ -6,7 +6,12 @@ import dynamic from "next/dynamic";
 import { Layers, Clock, Keyboard, X, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const EarthView = dynamic(() => import("@/components/EarthView"), { ssr: false });
+import { MapLoadingPlaceholder } from "@/components/dashboard/MapLoadingPlaceholder";
+
+const EarthView = dynamic(() => import("@/components/EarthView"), {
+  ssr: false,
+  loading: () => <MapLoadingPlaceholder />
+});
 
 function MapPageContent() {
   const searchParams = useSearchParams();
@@ -53,7 +58,7 @@ function MapPageContent() {
   }, []);
 
   return (
-    <div className="relative w-full h-[100vh] bg-void overflow-hidden -m-6 -mt-6" style={{ marginLeft: '-16rem', width: 'calc(100% + 16rem + 3rem)', marginTop: '-1.5rem', height: 'calc(100vh)' }}>
+    <div className="relative w-full h-full bg-void overflow-hidden">
       {/* Full-Screen 3D Earth Visualizer */}
       <div className="absolute inset-0">
         <EarthView
@@ -95,7 +100,7 @@ function MapPageContent() {
 
           {/* Bottom-Right: Keyboard shortcut hint */}
           <div className="absolute bottom-5 right-5 z-30 backdrop-blur-xl bg-void/40 border border-white/8 rounded-2xl px-4 py-2.5 flex items-center space-x-3 shadow-2xl">
-            <button
+            {/* <button
               onClick={() => setShowShortcuts((v) => !v)}
               className="flex items-center space-x-1.5 text-ash/60 hover:text-cloud transition-colors cursor-pointer"
             >
@@ -104,7 +109,7 @@ function MapPageContent() {
                 Shortcuts
               </span>
             </button>
-            <span className="text-white/10">|</span>
+            <span className="text-white/10">|</span> */}
             <button
               onClick={() => {
                 if (!document.fullscreenElement) {

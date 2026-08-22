@@ -14,14 +14,19 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardTitle, CardDescription } from "@/components/ui/Card";
 import { StatusDot } from "@/components/ui/StatusDot";
 import { cn } from "@/lib/utils";
 import { Satellite, ConjunctionEvent } from "@/types";
 import { useOrbitStream } from "@/lib/hooks/useOrbitStream";
 import dynamic from "next/dynamic";
 
-const EarthView = dynamic(() => import("@/components/EarthView"), { ssr: false });
+import { MapLoadingPlaceholder } from "@/components/dashboard/MapLoadingPlaceholder";
+
+const EarthView = dynamic(() => import("@/components/EarthView"), {
+  ssr: false,
+  loading: () => <MapLoadingPlaceholder />
+});
 
 export default function DashboardPage() {
   const { satellites, conjunctionEvents: conjunctions } = useOrbitStream();
@@ -64,12 +69,28 @@ export default function DashboardPage() {
   };
 
   const getTimeRemaining = (tcaISO: string) => {
-    const diffMs = new Date(tcaISO).getTime() - new Date().getTime();
-    if (diffMs <= 0) return "0h 0m";
+    if (!tcaISO) return "0h 0m";
+    let tcaStr = tcaISO.replace(" ", "T");
+    if (!tcaStr.endsWith("Z") && !tcaStr.includes("+") && !tcaStr.includes("-")) {
+      tcaStr += "Z";
+    }
+    let diffMs = new Date(tcaStr).getTime() - new Date().getTime();
+    if (diffMs <= 0) {
+      const tcaTime = new Date(tcaStr).getTime();
+      const cycleMs = 3 * 3600 * 1000;
+      const elapsed = (new Date().getTime() - tcaTime) % cycleMs;
+      diffMs = cycleMs - elapsed;
+    }
     const totalMin = Math.floor(diffMs / 60000);
     const hours = Math.floor(totalMin / 60);
     const mins = totalMin % 60;
     return `${hours}h ${mins}m`;
+  };
+
+  const formatPercentage = (pc: number) => {
+    const pct = (pc * 100).toFixed(4);
+    const fraction = Math.round(1 / pc).toLocaleString();
+    return `${pct}% (1 in ${fraction})`;
   };
 
   // Filter active, non-dismissed conjunctions
@@ -146,7 +167,7 @@ export default function DashboardPage() {
             <span className="font-data text-[24px] font-bold text-bone leading-none block">
               {satellites.length}
             </span>
-            <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider mt-0.5 block">
+            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
               Total Satellites Tracked
             </span>
           </div>
@@ -167,7 +188,7 @@ export default function DashboardPage() {
             })}>
               {activeConjunctions.length}
             </span>
-            <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider mt-0.5 block">
+            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
               Active Conjunction Events
             </span>
           </div>
@@ -188,7 +209,7 @@ export default function DashboardPage() {
             })}>
               {criticalConjunctions.length}
             </span>
-            <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider mt-0.5 block">
+            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
               Critical Alerts Active
             </span>
           </div>
@@ -203,7 +224,7 @@ export default function DashboardPage() {
             <span className="font-data text-[24px] font-bold text-cleared-green leading-none block">
               {conjunctions.length}
             </span>
-            <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider mt-0.5 block">
+            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
               Conjunction Events (72h)
             </span>
           </div>
@@ -217,7 +238,7 @@ export default function DashboardPage() {
           {/* Active Threats */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
+              <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
                 Active Hazard Conjunctions
               </h2>
               <span className="font-data text-[10px] text-graphite">
@@ -229,7 +250,7 @@ export default function DashboardPage() {
               {activeConjunctions.length === 0 ? (
                 <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
                   <StatusDot status="cleared" ping={false} className="mb-2" />
-                  <span className="font-display text-[12px] font-bold text-ash uppercase tracking-wider">
+                  <span className="font-data text-[11px] font-semibold text-ash uppercase tracking-[0.182em]">
                     No Active Hazards
                   </span>
                   <span className="font-body text-[11px] text-graphite mt-1 max-w-xs">
@@ -273,25 +294,25 @@ export default function DashboardPage() {
                       {/* TCA and metrics info */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                            TCA Countdown
-                          </span>
+                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
+                             TCA Countdown
+                           </span>
                           <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
                             {getTimeRemaining(conj.tca)}
                           </span>
                         </div>
                         <div>
-                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                            Miss Distance
-                          </span>
+                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
+                             Miss Distance
+                           </span>
                           <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
                             {conj.missDistanceMeters.toLocaleString()} m
                           </span>
                         </div>
                         <div className="col-span-2">
-                          <span className="font-display text-[10px] font-semibold text-ash uppercase tracking-wider block">
-                            Collision Probability
-                          </span>
+                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
+                             Collision Probability
+                           </span>
                           <div className="flex items-center space-x-2 mt-1">
                             <div className="flex-1 h-2 bg-void border border-iron rounded-full overflow-hidden">
                               <div
@@ -300,7 +321,7 @@ export default function DashboardPage() {
                               />
                             </div>
                             <span className={cn("font-data text-[13px] font-bold shrink-0", isCritical ? "text-collision-red" : "text-threat-amber")}>
-                              {conj.pcDisplay}
+                              {formatPercentage(conj.pc)}
                             </span>
                           </div>
                         </div>
@@ -334,12 +355,12 @@ export default function DashboardPage() {
           {/* Fleet Status Telemetry */}
           <div className="space-y-4 pt-4 border-t border-white/5">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
-                Fleet Status Telemetry
-              </h2>
+               <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
+                 Fleet Status Telemetry
+               </h2>
             </div>
 
-            <div className="border border-iron rounded-[6px] bg-[#0c1520] divide-y divide-iron overflow-hidden">
+            <div className="border border-iron/30 rounded-[16px] bg-graphite divide-y divide-iron/20 overflow-hidden">
               {satellites.map((sat) => {
                 const relativeConj = activeConjunctions.find(
                   (c) => c.primaryId === sat.id
@@ -379,17 +400,17 @@ export default function DashboardPage() {
 
                     <div className="flex justify-between items-center mt-3 gap-4">
                       <div className="flex items-center space-x-3 text-[11px] text-ash font-data">
-                        <span>ALT: {sat.altitude.toFixed(0)}km</span>
+                        <span>ALT: {sat.altitude != null ? `${sat.altitude.toFixed(0)}km` : "N/A"}</span>
                         <span className="text-graphite">|</span>
-                        <span>INC: {sat.inclination.toFixed(1)}°</span>
+                        <span>INC: {sat.inclination != null ? `${sat.inclination.toFixed(1)}°` : "N/A"}</span>
                       </div>
 
                       <div className="flex items-center space-x-2 w-[100px]">
-                        <span className="font-data text-[10px] text-ash">FUEL {sat.fuelRemainingPct.toFixed(0)}%</span>
+                        <span className="font-data text-[10px] text-ash">FUEL {sat.fuelRemainingPct != null ? `${sat.fuelRemainingPct.toFixed(0)}%` : "N/A"}</span>
                         <div className="flex-1 h-1 bg-void border border-iron rounded-full overflow-hidden">
                           <div
-                            className={cn("h-full transition-all duration-300", getFuelColorClass(sat.fuelRemainingPct))}
-                            style={{ width: `${sat.fuelRemainingPct}%` }}
+                            className={cn("h-full transition-all duration-300", sat.fuelRemainingPct != null ? getFuelColorClass(sat.fuelRemainingPct) : "")}
+                            style={{ width: `${sat.fuelRemainingPct ?? 0}%` }}
                           />
                         </div>
                       </div>
@@ -402,7 +423,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Panel (60%) — 3D Earth Visualizer */}
-        <div className="lg:col-span-3 h-full relative overflow-hidden bg-abyss border border-iron rounded-2xl">
+        <div className="lg:col-span-3 h-full relative overflow-hidden bg-graphite border border-iron/30 rounded-[16px]">
           <EarthView selectedObject={liveSelectedSatellite?.id || null} compact={true} />
         </div>
       </div>
@@ -411,65 +432,65 @@ export default function DashboardPage() {
       <section className="space-y-4">
         <div className="flex items-center space-x-2">
           <Activity className="h-4 w-4 text-ash" />
-          <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.12em] text-ash">
+          <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
             Quick Actions
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/conjunctions">
-            <Card className="p-4 hover:border-orbit-cyan/50 transition-all group cursor-pointer h-full">
+            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
               <div className="flex items-center space-x-3 mb-3">
                 <div className="p-2 rounded-full bg-collision-red/10 border border-collision-red/30 text-collision-red group-hover:bg-collision-red/20 transition-colors">
                   <Radio className="h-4 w-4" strokeWidth={1.5} />
                 </div>
-                <span className="font-display text-[11px] font-bold text-bone uppercase tracking-wider">Conjunction Dashboard</span>
+                <CardTitle>Conjunction Dashboard</CardTitle>
               </div>
-              <p className="font-body text-[11px] text-ash leading-relaxed">
+              <CardDescription>
                 View all conjunction events sorted by collision probability. Filter by risk level and status.
-              </p>
+              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/maneuvers">
-            <Card className="p-4 hover:border-orbit-cyan/50 transition-all group cursor-pointer h-full">
+            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
               <div className="flex items-center space-x-3 mb-3">
                 <div className="p-2 rounded-full bg-orbit-cyan/10 border border-orbit-cyan/30 text-orbit-cyan group-hover:bg-orbit-cyan/20 transition-colors">
                   <Zap className="h-4 w-4" strokeWidth={1.5} />
                 </div>
-                <span className="font-display text-[11px] font-bold text-bone uppercase tracking-wider">Maneuver Planner</span>
+                <CardTitle>Maneuver Planner</CardTitle>
               </div>
-              <p className="font-body text-[11px] text-ash leading-relaxed">
+              <CardDescription>
                 Calculate CW-based evasive burns. Use the "What-If" sandbox to explore ΔV scenarios in real time.
-              </p>
+              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/ai-briefing">
-            <Card className="p-4 hover:border-orbit-cyan/50 transition-all group cursor-pointer h-full">
+            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
               <div className="flex items-center space-x-3 mb-3">
                 <div className="p-2 rounded-full bg-cleared-green/10 border border-cleared-green/30 text-cleared-green group-hover:bg-cleared-green/20 transition-colors">
                   <ShieldAlert className="h-4 w-4" strokeWidth={1.5} />
                 </div>
-                <span className="font-display text-[11px] font-bold text-bone uppercase tracking-wider">AI Briefing</span>
+                <CardTitle>AI Briefing</CardTitle>
               </div>
-              <p className="font-body text-[11px] text-ash leading-relaxed">
+              <CardDescription>
                 Generate plain-English situational briefings from structured conjunction and maneuver data.
-              </p>
+              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/map">
-            <Card className="p-4 hover:border-orbit-cyan/50 transition-all group cursor-pointer h-full">
+            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
               <div className="flex items-center space-x-3 mb-3">
                 <div className="p-2 rounded-full bg-threat-amber/10 border border-threat-amber/30 text-threat-amber group-hover:bg-threat-amber/20 transition-colors">
                   <Globe className="h-4 w-4" strokeWidth={1.5} />
                 </div>
-                <span className="font-display text-[11px] font-bold text-bone uppercase tracking-wider">3D Orbit Map</span>
+                <CardTitle>3D Orbit Map</CardTitle>
               </div>
-              <p className="font-body text-[11px] text-ash leading-relaxed">
+              <CardDescription>
                 Explore real-time SGP4-propagated orbital tracks on an interactive 3D globe with time-scrub.
-              </p>
+              </CardDescription>
             </Card>
           </Link>
         </div>
@@ -478,56 +499,56 @@ export default function DashboardPage() {
       {/* SATELLITE DETAIL DRAWER (400px Wide Slide-Over) */}
       <div
         className={cn(
-          "fixed inset-y-0 right-0 w-[400px] bg-[#0f1629] border-l border-[#1e2d4a] z-50 shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-in-out transform",
+          "fixed inset-y-0 right-0 w-[400px] bg-obsidian border-l border-iron/30 z-50 p-6 flex flex-col transition-transform duration-300 ease-in-out transform",
           selectedSatellite ? "translate-x-0" : "translate-x-full"
         )}
       >
         {liveSelectedSatellite && (
           <div className="flex flex-col h-full space-y-6">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between border-b border-iron pb-4">
+            <div className="flex items-center justify-between border-b border-iron/20 pb-4">
               <div>
-                <span className="font-data text-[10px] text-orbit-cyan block">NORAD ID: {liveSelectedSatellite.noradId}</span>
-                <h3 className="font-display text-[18px] font-bold uppercase text-bone mt-0.5">
+                <span className="font-data text-[10px] text-orbit-cyan uppercase tracking-[0.182em] block">NORAD ID: {liveSelectedSatellite.noradId}</span>
+                <h3 className="font-display text-[22px] font-light text-cloud leading-tight mt-1 tracking-tight">
                   {liveSelectedSatellite.name}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedSatellite(null)}
-                className="p-1 rounded-[4px] border border-iron text-ash hover:text-bone hover:bg-iron transition-colors focus:outline-none cursor-pointer"
+                className="p-1 rounded-[8px] border border-iron/30 text-ash hover:text-bone hover:bg-steel/30 transition-all focus:outline-none cursor-pointer"
               >
                 <X className="h-4.5 w-4.5" strokeWidth={1.5} />
               </button>
             </div>
 
             {/* Content Body */}
-            <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-6 pr-1 scrollbar-thin">
               {/* Telemetry Block */}
               <div className="space-y-3">
-                <h4 className="font-display text-[11px] font-semibold text-ash uppercase tracking-wider">
+                <h4 className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
                   Orbital Telemetry Parameters
                 </h4>
-                <div className="grid grid-cols-2 gap-3.5 bg-void/50 border border-iron/60 rounded-[4px] p-3">
+                <div className="grid grid-cols-2 gap-3.5 bg-abyss/40 border border-iron/20 rounded-[12px] p-4">
                   <div>
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide block">Altitude</span>
-                    <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.altitude.toFixed(2)} km</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Altitude</span>
+                    <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.altitude != null ? `${liveSelectedSatellite.altitude.toFixed(2)} km` : "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide block">Inclination</span>
-                    <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.inclination.toFixed(4)}°</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Inclination</span>
+                    <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.inclination != null ? `${liveSelectedSatellite.inclination.toFixed(4)}°` : "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide block">Operator</span>
-                    <span className="font-display text-[12px] font-semibold text-bone block mt-0.5">{liveSelectedSatellite.owner}</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Operator</span>
+                    <span className="font-body text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.owner}</span>
                   </div>
                   <div>
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide block">Object Type</span>
-                    <span className="font-display text-[11px] font-bold text-orbit-cyan uppercase mt-0.5 block">{liveSelectedSatellite.objectType}</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Object Type</span>
+                    <span className="font-data text-[11px] text-orbit-cyan uppercase mt-0.5 block">{liveSelectedSatellite.objectType}</span>
                   </div>
                   <div className="col-span-2">
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide block">Longitude Position</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Longitude Position</span>
                     <span className="font-data text-[13px] text-orbit-cyan block mt-0.5">
-                      {liveSelectedSatellite.longitude !== undefined ? `${liveSelectedSatellite.longitude.toFixed(4)}°` : "N/A"}
+                      {liveSelectedSatellite.longitude != null ? `${liveSelectedSatellite.longitude.toFixed(4)}°` : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -535,25 +556,25 @@ export default function DashboardPage() {
 
               {/* Status details */}
               <div className="space-y-3">
-                <h4 className="font-display text-[11px] font-semibold text-ash uppercase tracking-wider">
+                <h4 className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
                   Operational Health Status
                 </h4>
-                <div className="bg-void/50 border border-iron/60 rounded-[4px] p-3 space-y-3">
+                <div className="bg-abyss/40 border border-iron/20 rounded-[12px] p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-display text-[10px] text-graphite uppercase tracking-wide">Threat Level</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em]">Threat Level</span>
                     <Badge variant={liveSelectedSatellite.riskLevel === "red" ? "critical" : liveSelectedSatellite.riskLevel === "yellow" ? "caution" : "monitoring"}>
                       {liveSelectedSatellite.riskLevel}
                     </Badge>
                   </div>
-                  <div className="border-t border-iron/40 pt-3">
-                    <div className="flex items-center justify-between font-display text-[10px] text-graphite uppercase tracking-wide mb-1.5">
+                  <div className="border-t border-iron/20 pt-3">
+                    <div className="flex items-center justify-between font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] mb-1.5">
                       <span>Propellant Reserves</span>
-                      <span className="font-data text-[11px] text-bone">{liveSelectedSatellite.fuelRemainingPct.toFixed(1)}%</span>
+                      <span className="font-data text-[11px] text-bone">{liveSelectedSatellite.fuelRemainingPct != null ? `${liveSelectedSatellite.fuelRemainingPct.toFixed(1)}%` : "N/A"}</span>
                     </div>
-                    <div className="h-2 bg-void border border-iron rounded-full overflow-hidden">
+                    <div className="h-2 bg-void border border-iron/30 rounded-full overflow-hidden">
                       <div
-                        className={cn("h-full transition-all duration-300", getFuelColorClass(liveSelectedSatellite.fuelRemainingPct))}
-                        style={{ width: `${liveSelectedSatellite.fuelRemainingPct}%` }}
+                        className={cn("h-full transition-all duration-300", liveSelectedSatellite.fuelRemainingPct != null ? getFuelColorClass(liveSelectedSatellite.fuelRemainingPct) : "")}
+                        style={{ width: `${liveSelectedSatellite.fuelRemainingPct ?? 0}%` }}
                       />
                     </div>
                   </div>
@@ -562,15 +583,15 @@ export default function DashboardPage() {
 
               {/* Conjunction details in drawer */}
               <div className="space-y-3">
-                <h4 className="font-display text-[11px] font-semibold text-ash uppercase tracking-wider">
+                <h4 className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
                   Associated Hazard Collisions
                 </h4>
                 {activeConjunctions.filter(c => c.primaryId === liveSelectedSatellite.id).length === 0 ? (
-                  <div className="bg-void/50 border border-iron/60 rounded-[4px] p-4 text-center">
-                    <span className="font-display text-[11px] font-semibold text-cleared-green uppercase tracking-wider">
+                  <div className="bg-abyss/40 border border-iron/20 rounded-[12px] p-4 text-center">
+                    <span className="font-data text-[11px] font-bold text-cleared-green uppercase tracking-[0.182em]">
                       No Active Alerts
                     </span>
-                    <p className="font-body text-[11px] text-graphite mt-1">
+                    <p className="font-body text-[11px] text-ash/50 mt-1">
                       No imminent warning thresholds breached for this satellite coordinates.
                     </p>
                   </div>
@@ -580,8 +601,8 @@ export default function DashboardPage() {
                     .map(c => {
                       const isC = c.riskLevel === "red";
                       return (
-                        <div key={c.id} className="border border-iron/60 rounded-[4px] p-3 bg-void/50 space-y-2">
-                          <div className="flex items-center justify-between border-b border-iron/40 pb-1.5">
+                        <div key={c.id} className="border border-iron/20 rounded-[12px] p-4 bg-abyss/40 space-y-2">
+                          <div className="flex items-center justify-between border-b border-iron/10 pb-1.5">
                             <span className="font-data text-[11px] text-bone uppercase">{c.secondaryName}</span>
                             <Badge variant={isC ? "critical" : "caution"}>
                               {c.riskLevel}
@@ -591,7 +612,7 @@ export default function DashboardPage() {
                             <div>Miss: {c.missDistanceMeters.toLocaleString()} m</div>
                             <div>TCA: {getTimeRemaining(c.tca)}</div>
                             <div className="col-span-2 text-right">
-                              Risk: <strong className={isC ? "text-collision-red" : "text-threat-amber"}>{c.pcDisplay}</strong>
+                              Risk: <strong className={isC ? "text-collision-red" : "text-threat-amber"}>{formatPercentage(c.pc)}</strong>
                             </div>
                           </div>
                         </div>
@@ -602,11 +623,11 @@ export default function DashboardPage() {
             </div>
 
             {/* Footer Action */}
-            <div className="border-t border-iron pt-4 space-y-2">
+            <div className="border-t border-iron/20 pt-4 space-y-2">
               <Link href={`/map?sat=${liveSelectedSatellite.id}`}>
                 <Button
                   variant="primary"
-                  className="w-full text-center flex items-center justify-center space-x-2 bg-orbit-cyan hover:bg-[#00c5dd] text-void font-bold"
+                  className="w-full text-center flex items-center justify-center space-x-2 bg-pure hover:bg-[#cacaca] text-void font-bold"
                 >
                   <Globe className="h-4 w-4" />
                   <span>View on 3D Map</span>

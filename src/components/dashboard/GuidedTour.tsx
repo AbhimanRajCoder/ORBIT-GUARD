@@ -254,13 +254,13 @@ export function GuidedTour() {
   if (!active) {
     return (
       <div className="fixed bottom-6 right-6 z-50 animate-slide-in">
-        <button
+        {/* <button
           onClick={startTour}
           className="flex items-center space-x-2 px-4 py-2.5 bg-purple-900 border border-purple-400 hover:bg-purple-800 text-white font-display text-[11px] font-bold tracking-wider uppercase rounded-md shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all scale-100 hover:scale-105 active:scale-95 cursor-pointer"
         >
           <Sparkles className="h-4 w-4 text-purple-200 animate-spin" />
           <span>Launch Demo Playbook</span>
-        </button>
+        </button> */}
       </div>
     );
   }

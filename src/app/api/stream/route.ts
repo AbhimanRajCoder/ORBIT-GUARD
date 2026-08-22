@@ -7,7 +7,7 @@ import fs from "fs";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_CACHE = "/Users/abhimanraj/ORBIT-GUARD-NEW/backend/data/tle_cache_active.json";
+const BACKEND_CACHE = process.cwd() + "/backend/data/tle_cache_active.json";
 
 function inferOwner(name: string): string {
   const n = name.toUpperCase();
@@ -46,10 +46,10 @@ export async function GET(request: NextRequest) {
   const writer = responseStream.writable.getWriter();
   const encoder = new TextEncoder();
 
-  const sendEvent = (type: string, data: any) => {
+  const sendEvent = async (type: string, data: any) => {
     try {
       const sseMessage = `event: data_update\ndata: ${JSON.stringify({ type, payload: data })}\n\n`;
-      writer.write(encoder.encode(sseMessage));
+      await writer.write(encoder.encode(sseMessage));
     } catch (e) {
       console.error("Error writing to SSE stream:", e);
     }

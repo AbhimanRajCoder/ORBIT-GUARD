@@ -30,7 +30,6 @@ const navItems: NavItem[] = [
   { name: "Maneuvers", href: "/maneuvers", icon: Zap },
   { name: "AI Briefing", href: "/ai-briefing", icon: MessageSquare },
   { name: "3D Live Map", href: "/map", icon: Globe },
-  { name: "Audit Trail", href: "/audit", icon: Shield },
 ];
 
 export function Sidebar() {
@@ -60,25 +59,25 @@ export function Sidebar() {
 
   return (
     <aside className={cn(
-      "bg-void border-r border-iron flex flex-col h-screen fixed top-0 left-0 z-30 select-none transition-all duration-300 ease-in-out",
+      "bg-obsidian border-r border-iron/20 flex flex-col h-screen fixed top-0 left-0 z-30 select-none transition-all duration-300 ease-in-out",
       sidebarMinimized ? "w-[64px]" : "w-[240px]",
       "max-md:hidden"
     )}>
       {/* 1. Top Logo Block */}
       <div className={cn(
-        "h-14 border-b border-iron flex flex-col justify-center transition-all duration-300",
+        "h-[56px] border-b border-iron/20 flex flex-col justify-center transition-all duration-300",
         sidebarMinimized ? "px-4 items-center" : "px-5"
       )}>
         <div className="flex items-center space-x-2">
           <Satellite className="h-5 w-5 text-orbit-cyan shrink-0" strokeWidth={1.5} />
           {!sidebarMinimized && (
-            <span className="font-display text-[16px] font-bold tracking-wider text-bone uppercase">
+            <span className="font-display text-[18px] font-light tracking-tight text-cloud leading-none">
               OrbitGuard
             </span>
           )}
         </div>
         {!sidebarMinimized && (
-          <span className="font-display text-[9px] text-ash font-medium tracking-[0.15em] uppercase leading-none mt-1">
+          <span className="font-data text-[8px] text-ash/60 uppercase tracking-[0.15em] leading-none mt-1">
             Maneuver Planning Simulator
           </span>
         )}
@@ -99,11 +98,11 @@ export function Sidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "group flex items-center rounded-[4px] border-l-4 border-l-transparent text-left transition-all duration-300 cursor-pointer",
+                "group flex items-center rounded-[8px] border-l-4 border-l-transparent text-left transition-all duration-300 cursor-pointer",
                 sidebarMinimized ? "justify-center px-1 py-2.5" : "justify-between px-3 py-2.5",
                 isActive
-                  ? "bg-graphite/20 border-l-orbit-cyan text-orbit-cyan"
-                  : "text-ash hover:text-bone hover:bg-iron/30 border-l-transparent"
+                  ? "bg-graphite border-l-orbit-cyan text-orbit-cyan"
+                  : "text-ash hover:text-bone hover:bg-steel/30 border-l-transparent"
               )}
               title={sidebarMinimized ? item.name : undefined}
             >
@@ -116,7 +115,7 @@ export function Sidebar() {
                   strokeWidth={1.5}
                 />
                 {!sidebarMinimized && (
-                  <span className="font-display text-[12px] font-semibold tracking-wide uppercase">
+                  <span className="font-data text-[11px] tracking-[0.1em] uppercase">
                     {item.name}
                   </span>
                 )}
@@ -127,9 +126,9 @@ export function Sidebar() {
       </nav>
 
       {/* 3. Bottom System Status */}
-      <div className={cn("border-t border-iron bg-void transition-all duration-300", sidebarMinimized ? "p-2" : "p-4")}>
+      <div className={cn("border-t border-iron/20 bg-obsidian transition-all duration-300", sidebarMinimized ? "p-2" : "p-4")}>
         <div className={cn(
-          "flex items-center bg-void/40 border border-iron rounded-[4px] transition-all duration-300",
+          "flex items-center bg-abyss/40 border border-iron/20 rounded-[8px] transition-all duration-300",
           sidebarMinimized ? "p-1.5 justify-center" : "p-2.5 space-x-3"
         )}>
           <StatusDot
@@ -138,7 +137,7 @@ export function Sidebar() {
           />
           {!sidebarMinimized && (
             <div className="flex flex-col">
-              <span className="font-display text-[11px] font-bold uppercase tracking-wider text-bone">
+              <span className="font-data text-[10px] text-ash/80 uppercase tracking-[0.1em]">
                 System Health
               </span>
               <span

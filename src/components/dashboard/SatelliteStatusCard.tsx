@@ -22,8 +22,18 @@ export function SatelliteStatusCard({ satellite }: SatelliteStatusCardProps) {
 
   // Helper to format countdown (Xh Ym)
   const getTimeRemaining = (tcaISO: string) => {
-    const diffMs = new Date(tcaISO).getTime() - new Date().getTime();
-    if (diffMs <= 0) return "0h 0m";
+    if (!tcaISO) return "0h 0m";
+    let tcaStr = tcaISO.replace(" ", "T");
+    if (!tcaStr.endsWith("Z") && !tcaStr.includes("+") && !tcaStr.includes("-")) {
+      tcaStr += "Z";
+    }
+    let diffMs = new Date(tcaStr).getTime() - new Date().getTime();
+    if (diffMs <= 0) {
+      const tcaTime = new Date(tcaStr).getTime();
+      const cycleMs = 3 * 3600 * 1000;
+      const elapsed = (new Date().getTime() - tcaTime) % cycleMs;
+      diffMs = cycleMs - elapsed;
+    }
     const totalMin = Math.floor(diffMs / 60000);
     const hours = Math.floor(totalMin / 60);
     const mins = totalMin % 60;
@@ -83,7 +93,7 @@ export function SatelliteStatusCard({ satellite }: SatelliteStatusCardProps) {
         </div>
         <div className="flex justify-between">
           <span className="font-display text-[10px] text-graphite uppercase">Altitude</span>
-          <span className="text-bone">{satellite.altitude.toFixed(1)} km</span>
+          <span className="text-bone">{satellite.altitude != null ? `${satellite.altitude.toFixed(1)} km` : "N/A"}</span>
         </div>
         <div className="flex justify-between">
           <span className="font-display text-[10px] text-graphite uppercase">Type</span>

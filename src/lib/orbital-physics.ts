@@ -275,12 +275,12 @@ export function calculateManeuverOptions(
 
   // Function to solve Clohessy-Wiltshire for deltaV to achieve target miss distance:
   // shiftKm = targetMiss - currentMiss
-  // deltaV = (shiftKm * 1000) / (2 * dtSeconds)
+  // deltaV = (shiftKm * 1000) / (3 * dtSeconds)
   const solveDeltaV = (targetMissKm: number) => {
     const currentMiss = event.missDistance;
     if (currentMiss >= targetMissKm) return 0.05; // tiny stationkeeping burn
     const shiftKm = targetMissKm - currentMiss;
-    const dv = (shiftKm * 1000) / (2 * dtSeconds);
+    const dv = (shiftKm * 1000) / (3 * dtSeconds);
     return parseFloat(Math.max(0.05, dv).toFixed(3));
   };
 

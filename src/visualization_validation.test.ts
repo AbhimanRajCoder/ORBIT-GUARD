@@ -209,7 +209,7 @@ describe("OrbitGuard Visualization Physical Correctness Validation", () => {
 
       const R_local = Math.sqrt(x_local * x_local + y_local * y_local + z_local * z_local);
       const calculatedLat = Math.asin(y_local / R_local) * 180 / Math.PI;
-      let calculatedLon = Math.atan2(z_local, x_local) * 180 / Math.PI;
+      let calculatedLon = Math.atan2(-x_local, z_local) * 180 / Math.PI;
 
       // Error
       const latErr = Math.abs(calculatedLat - geodeticStd.latitude);
