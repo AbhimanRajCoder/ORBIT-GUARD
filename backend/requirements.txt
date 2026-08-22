@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+supabase
+python-dotenv
+sgp4
+httpx
+numpy
