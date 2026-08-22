@@ -240,14 +240,14 @@ $$\hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|}, \qquad \hat{e}_x = \frac{\D
 #### Step 2: Rotate RTN Covariance to ECI
 
 Position uncertainty for each object is expressed in the local **Radial-Transverse-Normal (RTN)** frame with standard deviations:
-- **Primary asset:** σ_R = 0.3 km, σ_T = 1.5 km, σ_N = 0.3 km
-- **Secondary object:** σ_R = 0.5 km, σ_T = 2.0 km, σ_N = 0.5 km
+- **Primary asset:** $\sigma_R$ = 0.3 km, $\sigma_T$ = 1.5 km, $\sigma_N$ = 0.3 km
+- **Secondary object:** $\sigma_R$ = 0.5 km, $\sigma_T$ = 2.0 km, $\sigma_N$ = 0.5 km
 
 These are rotated to ECI using the outer-product formulation:
 
 $$\mathbf{C}_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)$$
 
-where `û_R`, `û_T`, `û_N` are the RTN basis vectors computed from each object's position and velocity. The two covariance matrices are then summed: **C_combined = C_A + C_B**.
+where `û_R`, `û_T`, `û_N` are the RTN basis vectors computed from each object's position and velocity. The two covariance matrices are then summed: $\mathbf{C}_{\text{combined}} = \mathbf{C}_A + \mathbf{C}_B$.
 
 #### Step 3: Project onto the 2D Encounter Plane
 
@@ -305,7 +305,7 @@ $$z(\Delta t) = \frac{\Delta v_N}{n}\sin(n\Delta t)$$
 
 where the mean motion $n = \sqrt{GM / a^3}$ is in rad/s, and $\Delta v_R$, $\Delta v_T$, $\Delta v_N$ are the radial, transverse (in-track), and normal (cross-track) impulse components.
 
-**Implementation:** [`orbital_mechanics.py:build_cw_state_transition()`](backend/app/services/orbital_mechanics.py) constructs the full 6×6 CW state transition matrix split into four 3×3 blocks (Φ_rr, Φ_rv, Φ_vr, Φ_vv).
+**Implementation:** [`orbital_mechanics.py:build_cw_state_transition()`](backend/app/services/orbital_mechanics.py) constructs the full 6×6 CW state transition matrix split into four 3×3 blocks ($\Phi_{rr}$, $\Phi_{rv}$, $\Phi_{vr}$, $\Phi_{vv}$).
 
 ### Three Pre-Calibrated Maneuver Options
 
@@ -400,7 +400,7 @@ $$\text{Score} = (0.40 \cdot S_{\text{safety}} + 0.30 \cdot S_{\text{fuel}} + 0.
 
 Scales linearly relative to a nominal safe separation of 50 km:
 
-$$S_{\text{safety}} = \min\left(1.0,\; \frac{d_{\text{achieved\_sgp4}}}{50.0}\right)$$
+$$S_{\text{safety}} = \min\left(1.0,\; \frac{d_{\text{achieved}}}{50.0}\right)$$
 
 Note: the **SGP4-validated distance** (`resulting_distance_sgp4`) is used, not the CW-predicted distance — this ensures the score reflects physical reality, not linearized approximation.
 
@@ -464,7 +464,7 @@ $$z_{\text{three}} = y_{\text{ECEF}} \times \text{SCALE}$$
 
 where the scale factor normalizes from real kilometers to Three.js scene units:
 
-$$\text{SCALE} = \frac{R_{\text{three\_earth}}}{R_{\text{wgs84\_earth}}} = \frac{6.371}{6378.137} \approx 9.989 \times 10^{-4}$$
+$$\text{SCALE} = \frac{R_{\text{three}}}{R_{\text{wgs84}}} = \frac{6.371}{6378.137} \approx 9.989 \times 10^{-4}$$
 
 This means 1 km in the real world maps to approximately 0.001 Three.js units. The Earth mesh has radius `6.371` units, and ISS orbits at `6.371 + 0.42 = ~6.79` units from the origin.
 
