@@ -25,7 +25,7 @@ ENV/
 orbitguard_audit.db
 
 # Data Cache / Snapshots
-data/tle_cache_active.json
+
 data/tle_snapshots/
 
 # OS files

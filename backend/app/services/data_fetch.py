@@ -36,13 +36,9 @@ async def fetch_tle_data(group: str = "active") -> Tuple[List[Dict], str]:
             with open(cache_file, "r") as f:
                 cached_data = json.load(f)
             
-            timestamp = cached_data.get("timestamp", 0)
-            age = time.time() - timestamp
-            
-            if age < CACHE_EXPIRY_SECONDS:
-                source = cached_data.get("source", "cache")
-                logger.info(f"Using fresh cached TLE data for group '{group}' (age: {age/3600:.2f} hours, last source: {source})")
-                return cached_data.get("satellites", []), f"cache ({source})"
+            source = cached_data.get("source", "cache")
+            logger.info(f"Using FORCED local cached TLE data for group '{group}'")
+            return cached_data.get("satellites", []), f"cache ({source})"
         except Exception as e:
             logger.warning(f"Error reading cache file {cache_file}: {e}. Will attempt fresh fetch.")
             cached_data = None
