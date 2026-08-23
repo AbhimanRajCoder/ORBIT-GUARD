@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { useOrbitStream } from '@/lib/hooks/useOrbitStream';
 import { propagateTLE } from '@/lib/sgp4-propagator';
 import * as satellite from 'satellite.js';
@@ -148,12 +149,14 @@ const EarthView: React.FC<EarthViewProps> = ({
 
   const selectedObjectRef = useRef<string | null>(null);
   const isTransitioningZoomOut = useRef(false);
+  const isTransitioningZoomIn = useRef(false);
   const trajectoriesVisibleRef = useRef(true);
   const debrisVisibleRef = useRef(true);
 
   const sliderRef = useRef<HTMLInputElement>(null);
   const timeTextRef = useRef<HTMLSpanElement>(null);
   const timeOffsetRef = useRef(0);
+  const lastOrbitDrawTimeRef = useRef<number>(0);
 
   const [activeOverlayConjunctions, setActiveOverlayConjunctions] = useState<Array<{
     id: string; label: string; distanceKm: number; x: number; y: number; visible: boolean;
@@ -257,7 +260,7 @@ const EarthView: React.FC<EarthViewProps> = ({
       updateSatelliteMeshes(sceneRef.current);
       drawAllOrbitTrajectories(sceneRef.current);
     }
-  }, [satellites, isManeuverMode]);
+  }, [satellites, isManeuverMode, selectedObject, conjunctionEvents]);
 
   useEffect(() => {
     if (orbitLinesGroupRef.current) {
@@ -275,6 +278,7 @@ const EarthView: React.FC<EarthViewProps> = ({
   useEffect(() => {
     selectedObjectRef.current = selectedObject;
     if (selectedObject && sceneRef.current) {
+      isTransitioningZoomIn.current = true;
       drawSelectedOrbitRing(selectedObject, sceneRef.current, visualizationData);
     } else if (sceneRef.current) {
       clearDeflectionGroup();
@@ -574,6 +578,12 @@ const EarthView: React.FC<EarthViewProps> = ({
       lastTime = Date.now();
  
       const simTime = new Date(Date.now() + timeOffsetRef.current * 3600 * 1000);
+
+      // Throttled redraw of orbit lines so they don't drift from satellites
+      if (Date.now() - lastOrbitDrawTimeRef.current > 250) {
+        lastOrbitDrawTimeRef.current = Date.now();
+        drawAllOrbitTrajectories(scene);
+      }
  
       // Earth & clouds rotate based on simulation GMST (Pillar 5 Physics Check)
       const earth = scene.getObjectByName('earth');
@@ -679,10 +689,15 @@ const EarthView: React.FC<EarthViewProps> = ({
           const tObj = scene.getObjectByName(targetMeshId);
           if (tObj && controlsRef.current && cameraRef.current) {
             controlsRef.current.target.lerp(tObj.position, 0.05);
-            const dist = cameraRef.current.position.distanceTo(tObj.position);
-            if (dist > 3.5) {
-              const dir = new THREE.Vector3().subVectors(cameraRef.current.position, tObj.position).normalize();
-              cameraRef.current.position.lerp(tObj.position.clone().add(dir.multiplyScalar(3.5)), 0.05);
+            if (isTransitioningZoomIn.current) {
+              const dist = cameraRef.current.position.distanceTo(tObj.position);
+              if (dist > 3.5) {
+                const dir = new THREE.Vector3().subVectors(cameraRef.current.position, tObj.position).normalize();
+                cameraRef.current.position.lerp(tObj.position.clone().add(dir.multiplyScalar(3.5)), 0.05);
+              }
+              if (dist <= 3.6) {
+                isTransitioningZoomIn.current = false;
+              }
             }
           }
         } else if (controlsRef.current && cameraRef.current) {
@@ -999,8 +1014,20 @@ const EarthView: React.FC<EarthViewProps> = ({
         if (state) mesh.position.set(state.position.x * SCALE, state.position.z * SCALE, state.position.y * SCALE);
       }
 
-      if (!showSatellites && !isDebris) mesh.visible = false;
-      if (!showLargeDebris && isDebris) mesh.visible = false;
+      let isVisible = true;
+      if (!showSatellites && !isDebris) isVisible = false;
+      if (!showLargeDebris && isDebris) isVisible = false;
+      
+      if (selectedObjectRef.current) {
+        let isFocused = sat.id === selectedObjectRef.current;
+        const activeConj = conjunctionEvents.find(c => c.id === selectedObjectRef.current);
+        if (activeConj && (sat.id === activeConj.primaryId || sat.id === activeConj.secondaryId)) {
+          isFocused = true;
+        }
+        if (!isFocused) isVisible = false;
+      }
+      
+      mesh.visible = isVisible;
 
       scene.add(mesh);
       objectsRef.current.push({ mesh, satId: sat.id, type: isDebris ? 'large-debris' : 'satellite' });
@@ -1022,7 +1049,7 @@ const EarthView: React.FC<EarthViewProps> = ({
 
     if (isManeuverMode) return;
 
-    const tStart = new Date();
+    const tStart = new Date(Date.now() + timeOffsetRef.current * 3600 * 1000);
 
     satellites.forEach((sat) => {
       if (!sat.tleLine1 || !sat.tleLine2) return;
@@ -1045,10 +1072,41 @@ const EarthView: React.FC<EarthViewProps> = ({
 
       let line: THREE.Line;
 
+      let color = 0x00bae2; // Default Cyan
+      if (sat.riskLevel === 'red') {
+        color = 0xff3355;
+      } else if (sat.riskLevel === 'yellow') {
+        color = 0xffb829;
+      } else if (isDebris) {
+        color = 0x8e9096;
+      } else {
+        switch (sat.owner) {
+          case 'SpaceX': color = 0x00ffcc; break;
+          case 'OneWeb': color = 0xa855f7; break;
+          case 'NASA/Roscosmos':
+          case 'NASA': color = 0x22c55e; break;
+          case 'CNSA': color = 0xea580c; break;
+          case 'NOAA': color = 0x3b82f6; break;
+          default: color = 0x06b6d4; break;
+        }
+      }
+
+      let isVisible = true;
+      if (selectedObjectRef.current) {
+        let isFocused = sat.id === selectedObjectRef.current;
+        const activeConj = conjunctionEvents.find(c => c.id === selectedObjectRef.current);
+        if (activeConj && (sat.id === activeConj.primaryId || sat.id === activeConj.secondaryId)) {
+          isFocused = true;
+        }
+        if (!isFocused) isVisible = false;
+      }
+
+      if (!isVisible) return; // Don't draw line
+
       if (isHazard) {
         // Dashed animated line for hazard orbits
         const mat = new THREE.LineDashedMaterial({
-          color: sat.riskLevel === 'red' ? 0xff3355 : 0xffb829,
+          color: color,
           dashSize: 0.12,
           gapSize: 0.06,
           transparent: true,
@@ -1057,10 +1115,10 @@ const EarthView: React.FC<EarthViewProps> = ({
         line = new THREE.Line(geo, mat);
         line.computeLineDistances();
       } else if (isDebris) {
-        const mat = new THREE.LineBasicMaterial({ color: 0x4a4e55, transparent: true, opacity: 0.35 });
+        const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.35 });
         line = new THREE.Line(geo, mat);
       } else {
-        const mat = new THREE.LineBasicMaterial({ color: 0x00bae2, transparent: true, opacity: 0.45 });
+        const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.45 });
         line = new THREE.Line(geo, mat);
       }
 
@@ -1767,10 +1825,12 @@ const EarthView: React.FC<EarthViewProps> = ({
                 {/* Speed Selector */}
                 <select
                   value={simSpeed}
-                  onChange={(e) => setSimSpeed(parseInt(e.target.value, 10))}
+                  onChange={(e) => setSimSpeed(parseFloat(e.target.value))}
                   className="bg-void border border-iron/40 rounded-xl text-[10px] py-1.5 px-2 text-bone focus:outline-none focus:border-orbit-cyan/60 font-data cursor-pointer shrink-0"
                   title="Simulation Speed"
                 >
+                  <option value="0.25">0.25x Speed</option>
+                  <option value="0.5">0.5x Speed</option>
                   <option value="1">1x Speed</option>
                   <option value="5">5x Speed</option>
                   <option value="10">10x Speed</option>
@@ -1884,7 +1944,7 @@ const EarthView: React.FC<EarthViewProps> = ({
                       {/* Telemetry Grid */}
                       <div className="space-y-2">
                         <span className="font-display text-[9px] font-bold text-ash/60 uppercase tracking-wider block">
-                          Orbital Telemetry
+                          <InfoTooltip term="Orbital Telemetry" explanation="Real-time orbital coordinates, height, and speed measurements of the satellite." />
                         </span>
                         <div className="grid grid-cols-2 gap-2 bg-void/30 border border-iron/20 p-2.5 rounded-xl font-data text-[10px]">
                           {[
@@ -1896,12 +1956,29 @@ const EarthView: React.FC<EarthViewProps> = ({
                             { label: 'Perigee', val: sat.perigee != null ? `${sat.perigee.toFixed(0)} km` : 'N/A' },
                             { label: 'Eccentricity', val: sat.eccentricity != null ? sat.eccentricity.toFixed(5) : 'N/A' },
                             { label: 'Type', val: isDebris ? 'Space Debris' : 'Operational' },
-                          ].map(({ label, val }) => (
-                            <div key={label} className="border-b border-iron/5 pb-1">
-                              <span className="text-ash/50 text-[9px] block uppercase font-display tracking-wide">{label}</span>
-                              <span className="text-bone font-semibold">{val}</span>
-                            </div>
-                          ))}
+                          ].map(({ label, val }) => {
+                            const getTelemetryTooltip = (l: string) => {
+                                switch (l) {
+                                  case 'Altitude': return "The height of the satellite above the Earth's surface.";
+                                  case 'Inclination': return "The angle of the satellite's orbit relative to the Earth's equator.";
+                                  case 'Period': return "The time it takes for the satellite to complete one full orbit around Earth.";
+                                  case 'Velocity': return "The current speed of the satellite relative to the Earth's center.";
+                                  case 'Apogee': return "The point in the orbit farthest from the Earth.";
+                                  case 'Perigee': return "The point in the orbit closest to the Earth.";
+                                  case 'Eccentricity': return "A measure of how much the orbit deviates from a perfect circle (0 is circular, closer to 1 is elliptical).";
+                                  default: return '';
+                                }
+                              };
+                              const explanation = getTelemetryTooltip(label);
+                              return (
+                                <div key={label} className="border-b border-iron/5 pb-1">
+                                  <span className="text-ash/50 text-[9px] block uppercase font-display tracking-wide">
+                                    {explanation ? <InfoTooltip term={label} explanation={explanation} /> : label}
+                                  </span>
+                                  <span className="text-bone font-semibold">{val}</span>
+                                </div>
+                              );
+                            })}
                         </div>
                       </div>
 
@@ -1926,7 +2003,9 @@ const EarthView: React.FC<EarthViewProps> = ({
                       {!isDebris && (
                         <div className="space-y-2 bg-void/30 border border-iron/20 p-3 rounded-xl">
                           <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-display font-bold text-ash/60 uppercase tracking-wider">Propellant Reserves</span>
+                            <span className="font-display font-bold text-ash/60 uppercase tracking-wider">
+                              <InfoTooltip term="Propellant Reserves" explanation="The remaining fuel available for satellite maneuvers and orbit corrections." />
+                            </span>
                             <span className="font-data font-bold text-bone">{sat.fuelRemainingPct != null ? `${sat.fuelRemainingPct.toFixed(1)}%` : 'N/A'}</span>
                           </div>
                           <div className="h-2 bg-abyss border border-iron/40 rounded-full overflow-hidden mt-1">
@@ -1948,15 +2027,15 @@ const EarthView: React.FC<EarthViewProps> = ({
                           <div className="font-data text-[10px] text-ash space-y-1">
                             <div className="truncate text-bone font-semibold font-body">vs {activeConj.secondaryName}</div>
                             <div className="flex justify-between">
-                              <span className="text-ash/50">Miss Distance:</span>
+                              <span className="text-ash/50"><InfoTooltip term="Miss Distance" explanation="The minimum physical distance predicted between the two objects at their closest point." />:</span>
                               <span className="font-bold text-collision-red">{activeConj.missDistanceMeters.toLocaleString()} m</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-ash/50">Collision Prob (Pc):</span>
+                              <span className="text-ash/50"><InfoTooltip term="Collision Prob (Pc)" explanation="Probability of Collision. The calculated chance that the two objects will collide." />:</span>
                               <span className="font-bold text-bone">{activeConj.pcDisplay}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-ash/50">TCA Epoch:</span>
+                              <span className="text-ash/50"><InfoTooltip term="TCA Epoch" explanation="Time of Closest Approach. The specific point in time (epoch) when the two objects will be at their absolute closest distance." />:</span>
                               <span className="text-bone">{new Date(activeConj.tca).toISOString().replace('T', ' ').slice(0, 19)} UTC</span>
                             </div>
                           </div>

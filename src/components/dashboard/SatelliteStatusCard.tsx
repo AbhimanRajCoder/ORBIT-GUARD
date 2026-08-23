@@ -81,7 +81,7 @@ export function SatelliteStatusCard({ satellite }: SatelliteStatusCardProps) {
             "text-cleared-green": isSafe,
           })}
         >
-          {isCritical ? "ACTION REQUIRED" : isWarning ? "MONITOR" : "ALL CLEAR"}
+          {isCritical ? "RED ALERT" : isWarning ? "YELLOW ALERT" : "ALL CLEAR"}
         </span>
       </div>
 

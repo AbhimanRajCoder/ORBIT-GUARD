@@ -1,8 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 
 describe("OrbitGuard Pillar Integration Validation Tests", () => {
-  // Test Candidate 62099
-  const VALIDATION_CANDIDATE_ID = "62099";
+  let VALIDATION_CANDIDATE_ID = "62099";
+
+  beforeAll(async () => {
+    try {
+      const res = await fetch("http://localhost:3000/api/conjunction-events");
+      if (res.ok) {
+        const conjunctions = await res.json();
+        if (conjunctions.length > 0) {
+          const active = conjunctions.find((c: any) => c.status === "active") || conjunctions[0];
+          VALIDATION_CANDIDATE_ID = active.secondaryId.split("-")[1];
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to dynamically fetch active candidate ID, falling back to 62099:", e);
+    }
+  });
 
   it("Pillar 3 & 4: Maneuver Calculation & Trade-off Comparison Integration", async () => {
     // 1. Fetch real backend comparison directly

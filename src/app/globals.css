@@ -1,75 +1,59 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap');
+
 
 @import "tailwindcss";
 
 @theme {
-  /* Colors */
-  --color-iris-gleam: #847dff;
-  --color-cyan-signal: #00b3dd;
-  --color-pale-iris: #d1c9ff;
-  --color-deep-iris: #4b49aa;
-  --color-orchid-bloom: #dd90d8;
-  --color-periwinkle: #90b8f0;
-  --color-obsidian: #0f1011;
-  --color-abyss: #090a0b;
-  --color-graphite: #2e2e2e;
-  --color-steel: #3f4041;
-  --color-silver: #cacaca;
-  --color-fog: #6a6b6b;
-  --color-ash: #9f9fa0;
-  --color-cloud: #f5f5f7;
-  --color-pure: #ffffff;
-  --color-void: #000000;
+  /* Colors - Hyperstudio Design System */
+  --color-canvas: #101010;
+  --color-surface-elevated: #080808;
+  --color-text-primary: #f3f3f3;
+  --color-text-muted: #9c9c9c;
+  --color-border-hairline: #212121;
+  --color-accent-gold: #6f6759;
+  --color-action-fill: #ffffff;
+  --color-action-text: #101010;
+  --color-indicator-live: #98ff38;
 
   /* Aliases to maintain compatibility with existing OrbitGuard components */
-  --color-bone: #ffffff;
-  --color-iron: #3f4041;
-  --color-orbit-cyan: var(--color-cyan-signal);
+  --color-obsidian: #101010;
+  --color-abyss: #080808;
+  --color-graphite: transparent;
+  --color-steel: #212121;
+  --color-iron: #212121;
+  --color-silver: #cacaca;
+  --color-fog: #6a6b6b;
+  --color-ash: #9c9c9c;
+  --color-cloud: #f3f3f3;
+  --color-pure: #f3f3f3;
+  --color-void: #101010;
+  --color-bone: #f3f3f3;
+
+  --color-orbit-cyan: #6f6759; /* Accent gold used ONLY for decorative icon stroke */
   --color-threat-amber: #ffb829;
   --color-collision-red: #ff3355;
-  --color-cleared-green: #0ae448;
-  --color-plum-voltage: #847dff;
-  --color-midnight-violet: #0f1011;
+  --color-cleared-green: #98ff38;
 
   /* Typography Font Mappings */
-  --font-display: var(--font-display), 'Playfair Display', serif;
-  --font-data: var(--font-data), 'Roboto Mono', monospace;
-  --font-body: var(--font-body), 'Inter', sans-serif;
+  --font-display: var(--font-display, 'Barlow', sans-serif);
+  --font-data: var(--font-data, monospace);
+  --font-body: var(--font-body, 'Barlow', sans-serif);
 
-  /* Border Radii */
+  /* Border Radii - 8px max per spec */
   --radius-sm: 8px;
   --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-xl: 16px;
-  --radius-2xl: 30px;
-  --radius-3xl: 30px;
-
-  /* Space themed colors mapped to OrbitGuard variables for EarthView */
-  --color-space-section: var(--color-obsidian);
-  --color-space-card: var(--color-graphite);
-  --color-space-border: rgba(255, 255, 255, 0.1);
-  --color-space-border-hover: rgba(255, 255, 255, 0.2);
-  --color-space-text-main: var(--color-ash);
-  --color-space-text-heading: var(--color-pure);
-  --color-space-text-muted: var(--color-fog);
-}
-
-/* Gradients */
-.bg-sky-atmosphere {
-  background: linear-gradient(to bottom, rgb(15,16,17), rgb(19,29,39) 18%, rgb(26,71,136) 37%, rgb(64,138,193) 69%, rgb(64,138,193) 102%);
-}
-
-.bg-dark-chrome {
-  background: linear-gradient(135deg, rgb(43,43,44), rgb(19,19,19));
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --radius-3xl: 8px;
 }
 
 /* Base Styles */
 html,
 body {
-  background-color: var(--color-obsidian);
-  color: var(--color-ash);
+  background-color: #101010;
+  color: #f3f3f3;
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400 !important;
   min-height: 100%;
   margin: 0;
   padding: 0;
@@ -77,197 +61,109 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar to match Dark UI theme */
+/* Let browser and tailwind handle font weights so bold headings work properly */
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-void);
+  background: #101010;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-iron);
-  border-radius: 3px;
+  background: #212121;
+  border-radius: 0px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-graphite);
+  background: #6f6759;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Typography Custom Helper Classes */
+.text-display {
+  font-size: 48px !important;
+  line-height: 1.05 !important;
+  letter-spacing: 0.02em !important;
+  font-family: var(--font-display), sans-serif !important;
+  color: #f3f3f3 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
 }
 
-.animate-slide-in {
-  animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.text-heading {
+  font-size: 34px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0.02em !important;
+  font-family: var(--font-display), sans-serif !important;
+  color: #f3f3f3 !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
 }
 
-@keyframes fadeInSlide {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.text-body-primary {
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+  color: #f3f3f3 !important;
+  font-weight: 400 !important;
 }
 
-.animate-fade-in-slide {
-  animation: fadeInSlide 0.4s ease-out forwards;
+.text-body-secondary {
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+  color: #9c9c9c !important;
+  font-weight: 400 !important;
 }
 
-.animate-fade-in-slide-medium {
-  animation: fadeInSlide 0.6s ease-out forwards;
+.text-meta {
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: #9c9c9c !important;
 }
 
-.animate-fade-in-slide-slow {
-  animation: fadeInSlide 0.8s ease-out forwards;
-}
-
-/* Premium Instrument Panel HUD Typography */
-.font-display {
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-/* Form Controls & Inputs - Outline switches on void canvas */
-input, select, textarea {
-  background-color: var(--color-void) !important;
-  border: 1px solid var(--color-iron) !important;
-  border-radius: var(--radius-md) !important;
-  color: var(--color-bone) !important;
+.text-mono-numeric {
   font-family: var(--font-data), monospace !important;
-  font-size: 12px !important;
-  letter-spacing: 0.04em !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  font-size: 14px !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Section dividers: full-width 1px #212121 hairline */
+.hairline-divider {
+  border: 0;
+  border-top: 1px solid #212121;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* Form Controls & Inputs */
+input, select, textarea {
+  background-color: #080808 !important;
+  border: 1px solid #212121 !important;
+  border-radius: 8px !important;
+  color: #f3f3f3 !important;
+  font-family: var(--font-data), monospace !important;
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+  transition: all 0.2s ease !important;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--color-orbit-cyan) !important;
-  box-shadow: 0 0 0 1px var(--color-orbit-cyan) !important;
+  border-color: #f3f3f3 !important;
   outline: none !important;
 }
 
-/* Layout outline highlights and buttons hover corrections */
-button:hover {
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+/* Layout animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ─── Mobile Responsive Adjustments ─────────────────────────── */
-@media (max-width: 768px) {
-  .font-display {
-    letter-spacing: 0.04em;
-  }
-
-  /* Stack grids vertically */
-  .grid-cols-2,
-  .grid-cols-3,
-  .grid-cols-4 {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* Reduce card padding on small screens */
-  .p-6 {
-    padding: 1rem !important;
-  }
-}
-
-/* ─── Keyboard Shortcut Indicator ───────────────────────────── */
-kbd {
-  font-family: var(--font-data), monospace;
-  border-radius: 3px;
-  user-select: none;
-}
-
-/* ─── Custom GSAP 3D & Premium Hover Effects ────────────────── */
-.perspective-1000 {
-  perspective: 1000px;
-  transform-style: preserve-3d;
-}
-
-.preserve-3d {
-  transform-style: preserve-3d;
-}
-
-/* Shifting card glare shine reflection */
-.card-glare {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(
-    circle 150px at var(--mouse-x, 0%) var(--mouse-y, 0%),
-    rgba(255, 184, 41, 0.15),
-    transparent 70%
-  );
-  opacity: 0;
-  transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2;
-  mix-blend-mode: screen;
-}
-
-/* Alternate cyan glare for specific cards */
-.card-glare-cyan {
-  background: radial-gradient(
-    circle 150px at var(--mouse-x, 0%) var(--mouse-y, 0%),
-    rgba(0, 186, 226, 0.15),
-    transparent 70%
-  );
-}
-
-.js-tilt-card:hover .card-glare {
-  opacity: 1;
-}
-
-/* Grid overlay background */
-.grid-scanlines {
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-/* Border sweep keyframes */
-@keyframes borderSweep {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.sweep-border {
-  position: relative;
-}
-
-.sweep-border::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255, 184, 41, 0.4), rgba(255,255,255,0.1));
-  background-size: 200% 200%;
-  z-index: -1;
-  opacity: 0;
-  border-radius: 4px;
-  transition: opacity 0.3s ease;
-  animation: borderSweep 4s linear infinite;
-}
-
-.sweep-border:hover::after {
-  opacity: 1;
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
 

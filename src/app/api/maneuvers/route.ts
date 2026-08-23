@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ManeuverPlan } from "@/types";
+import { BACKEND_API_URL } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export async function GET() {
     // 1. Fetch audit logs from backend
     let auditLogs: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/audit", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/audit`, { cache: "no-store" });
       if (res.ok) {
         auditLogs = await res.json();
       }
@@ -19,7 +20,7 @@ export async function GET() {
     // 2. Fetch alerts to get conjunction info
     let backendAlerts: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
       if (res.ok) {
         backendAlerts = await res.json();
       }

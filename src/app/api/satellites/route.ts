@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseCatalog, FALLBACK_ACTIVE_TLES, FALLBACK_DEBRIS_TLES } from "@/lib/celestrak";
 import { propagateTLE, propagateTLEToGeodetic } from "@/lib/sgp4-propagator";
 import { Satellite } from "@/types";
+import { BACKEND_API_URL } from "@/lib/config";
 import fs from "fs";
 import path from "path";
 
@@ -27,7 +28,7 @@ export async function GET() {
     // 1. Fetch active alerts from FastAPI backend
     let backendAlerts: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
       if (res.ok) {
         backendAlerts = await res.json();
       }

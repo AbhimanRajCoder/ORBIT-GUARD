@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseCatalog, FALLBACK_ACTIVE_TLES, FALLBACK_DEBRIS_TLES } from "@/lib/celestrak";
+import { BACKEND_API_URL } from "@/lib/config";
 import { propagateTLE, propagateTLEToGeodetic } from "@/lib/sgp4-propagator";
 import { calculateOrbitalPeriod } from "@/lib/orbital-physics";
 import { Satellite, ConjunctionEvent } from "@/types";
@@ -33,7 +34,7 @@ function formatExponent(num: number) {
 
 async function fetchAlerts() {
   try {
-    const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+    const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
     if (res.ok) return await res.json();
   } catch (e) {
     console.error("Stream SSE failed to fetch alerts from backend:", e);

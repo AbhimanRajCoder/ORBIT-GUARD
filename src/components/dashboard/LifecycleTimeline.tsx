@@ -2,17 +2,6 @@
 
 import React from "react";
 import { ConjunctionEvent } from "@/types";
-import { 
-  CheckCircle2, 
-  HelpCircle, 
-  Settings, 
-  Zap, 
-  ShieldCheck, 
-  ShieldAlert,
-  Clock,
-  User,
-  Activity
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LifecycleTimelineProps {
@@ -23,7 +12,6 @@ interface StepItem {
   key: string;
   label: string;
   description: string;
-  icon: React.ComponentType<any>;
 }
 
 const ALL_STEPS: StepItem[] = [
@@ -31,31 +19,26 @@ const ALL_STEPS: StepItem[] = [
     key: "detected",
     label: "Threat Detected",
     description: "Coarse & fine screening finished. Orbital hazard identified.",
-    icon: Activity,
   },
   {
     key: "explained",
     label: "AI Briefing Generated",
     description: "LLM risk summary and situational context established.",
-    icon: HelpCircle,
   },
   {
     key: "maneuvers_calculated",
     label: "Dodging Maneuvers Computed",
     description: "Clohessy-Wiltshire relative burn vectors calculated.",
-    icon: Settings,
   },
   {
     key: "tradeoff_ranked",
     label: "Trade-off Assessment Ranked",
     description: "Optimal evasive maneuver evaluated against secondary risks.",
-    icon: Zap,
   },
   {
-    key: "approved", // can be approved or rejected
+    key: "approved",
     label: "Authorization Resolution",
     description: "Operator review completed. Uplink authorization decision logged.",
-    icon: ShieldCheck,
   }
 ];
 
@@ -94,17 +77,16 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
   };
 
   return (
-    <div className="bg-[#0b101f]/75 border border-[#1b2a47] rounded-[8px] p-5 space-y-4">
-      <div className="flex items-center space-x-2 border-b border-white/5 pb-2.5">
-        <Clock className="h-4 w-4 text-orbit-cyan" />
-        <span className="text-[11px] font-display font-bold text-ash uppercase tracking-wider">
+    <div className="bg-transparent border border-[#212121] rounded-[8px] p-5 space-y-4">
+      <div className="flex items-center space-x-2 border-b border-[#212121] pb-2.5">
+        <span className="text-[11px] font-mono text-[#9c9c9c] uppercase tracking-wider">
           Verifiable Conjunction Lifecycle
         </span>
       </div>
 
       <div className="relative pl-6 space-y-6">
         {/* Timeline Connecting Vertical Line */}
-        <div className="absolute left-[11px] top-2 bottom-2 w-[1px] bg-iron/20" />
+        <div className="absolute left-[-16px] top-3 bottom-3 w-[1px] bg-[#212121]" />
 
         {ALL_STEPS.map((step, idx) => {
           let isCompleted = idx < activeIndex;
@@ -117,77 +99,63 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
           }
 
           const logEvent = stateEventMap.get(key);
-          const Icon = step.icon;
 
           // Adjust details/styling for rejected step
           let stepLabel = step.label;
-          let StepIcon = Icon;
-          let iconColor = "text-[#8a99ad]";
-          let circleBg = "bg-[#090f1e] border-iron/30";
-
           if (isCompleted) {
             if (key === "rejected") {
               stepLabel = "Authorization Rejected";
-              StepIcon = ShieldAlert;
-              iconColor = "text-[#ff4444]";
-              circleBg = "bg-[#ff4444]/10 border-[#ff4444]/40";
-            } else {
-              if (key === "approved") {
-                stepLabel = "Maneuver Approved";
-              }
-              StepIcon = CheckCircle2;
-              iconColor = "text-cleared-green";
-              circleBg = "bg-cleared-green/10 border-cleared-green/45";
+            } else if (key === "approved") {
+              stepLabel = "Maneuver Approved";
             }
-          } else if (isActive) {
-            iconColor = "text-orbit-cyan animate-pulse";
-            circleBg = "bg-orbit-cyan/15 border-orbit-cyan/60 ring-2 ring-orbit-cyan/20";
           }
 
           return (
             <div key={step.key} className="relative flex items-start space-x-4">
-              {/* Stepper Circle Icon */}
+              {/* Stepper Circle Indicator */}
               <div 
                 className={cn(
-                  "absolute left-[-26px] top-0.5 w-[22px] h-[22px] rounded-full border flex items-center justify-center z-10 transition-all",
-                  circleBg
+                  "absolute left-[-20px] top-[6px] w-[10px] h-[10px] rounded-full border transition-all z-10",
+                  isCompleted 
+                    ? (key === "rejected" ? "bg-[#ff3355] border-transparent" : "bg-[#f3f3f3] border-transparent")
+                    : isActive 
+                      ? "bg-transparent border-[#f3f3f3] ring-2 ring-[#f3f3f3]/25 animate-pulse" 
+                      : "bg-transparent border-[#212121]"
                 )}
-              >
-                <StepIcon className={cn("h-3.5 w-3.5", iconColor)} strokeWidth={2} />
-              </div>
+              />
 
               {/* Step Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <h4 className={cn("text-[13px] font-display font-semibold", 
-                    isCompleted ? "text-bone" : isActive ? "text-orbit-cyan" : "text-ash"
+                  <h4 className={cn("text-[13px] font-sans uppercase tracking-wider", 
+                    isCompleted ? "text-[#f3f3f3]" : isActive ? "text-[#ffffff]" : "text-[#9c9c9c]"
                   )}>
                     {stepLabel}
                   </h4>
                   {logEvent && (
-                    <span className="text-[10px] text-graphite font-mono">
+                    <span className="text-[10px] text-[#9c9c9c] font-mono">
                       {formatDate(logEvent.timestamp)}
                     </span>
                   )}
                 </div>
 
-                <p className="text-[11px] text-ash/80 font-sans mt-0.5 leading-relaxed">
+                <p className="text-[11px] text-[#9c9c9c]/80 font-sans mt-0.5 leading-relaxed">
                   {step.description}
                 </p>
 
                 {/* Event specific metadata formatting */}
                 {logEvent && (
-                  <div className="mt-2 p-2 bg-[#060a14] rounded border border-white/5 font-data text-[10px] text-cloud space-y-1.5 animate-slide-in">
+                  <div className="mt-2 p-4 bg-[#080808] rounded-[8px] border border-[#212121] font-mono text-[11px] text-[#9c9c9c] space-y-2">
                     {/* Detected details */}
                     {logEvent.state === "detected" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-ash block uppercase font-bold tracking-wider">Miss Distance</span>
-                          <span className="text-bone">{logEvent.details.min_distance_km.toFixed(3)} km</span>
+                          <span className="text-[#9c9c9c] block uppercase tracking-wider">Miss Distance</span>
+                          <span className="text-[#f3f3f3]">{logEvent.details.min_distance_km.toFixed(3)} km</span>
                         </div>
                         <div>
-                          <span className="text-ash block uppercase font-bold tracking-wider">Triage Risk Score</span>
-                          <span className={cn("font-bold", logEvent.details.risk_score > 75 ? "text-collision-red" : "text-threat-amber")}>
+                          <span className="text-[#9c9c9c] block uppercase tracking-wider">Triage Risk Score</span>
+                          <span className={cn("font-normal", logEvent.details.risk_score > 75 ? "text-[#ff3355]" : "text-[#ffb829]")}>
                             {logEvent.details.risk_score.toFixed(1)} / 100
                           </span>
                         </div>
@@ -197,13 +165,13 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {/* Explained details */}
                     {logEvent.state === "explained" && (
                       <div>
-                        <div className="flex justify-between items-center text-ash mb-1">
-                          <span className="uppercase font-bold tracking-wider">AI Analysis Briefing</span>
-                          <span className="bg-orbit-cyan/15 text-orbit-cyan px-1.5 py-0.2 rounded text-[9px] font-mono">
+                        <div className="flex justify-between items-center text-[#9c9c9c] mb-1">
+                          <span className="uppercase tracking-wider">AI Analysis Briefing</span>
+                          <span className="border border-[#212121] px-1.5 py-0.5 rounded text-[9px] font-mono text-[#f3f3f3]">
                             {logEvent.details.source}
                           </span>
                         </div>
-                        <p className="italic text-ash/90 text-justify leading-relaxed">
+                        <p className="italic text-[#9c9c9c]/90 text-justify leading-relaxed">
                           "{logEvent.details.explanation_preview}"
                         </p>
                       </div>
@@ -212,8 +180,8 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {/* Calculate details */}
                     {logEvent.state === "maneuvers_calculated" && (
                       <div className="flex items-center justify-between">
-                        <span className="text-ash uppercase font-bold tracking-wider">Options Computed</span>
-                        <span className="text-bone font-mono">{logEvent.details.options_count} relative trajectories</span>
+                        <span className="text-[#9c9c9c] uppercase tracking-wider">Options Computed</span>
+                        <span className="text-[#f3f3f3] font-mono">{logEvent.details.options_count} relative trajectories</span>
                       </div>
                     )}
 
@@ -221,11 +189,11 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {logEvent.state === "tradeoff_ranked" && (
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-ash uppercase font-bold tracking-wider">Recommended Burn Scale</span>
-                          <span className="text-orbit-cyan font-bold uppercase">{logEvent.details.recommended_option_id?.split('_').slice(-2).join(' ')}</span>
+                          <span className="text-[#9c9c9c] uppercase tracking-wider">Recommended Burn Scale</span>
+                          <span className="text-[#f3f3f3] uppercase font-normal">{logEvent.details.recommended_option_id?.split('_').slice(-2).join(' ')}</span>
                         </div>
                         {logEvent.details.reasoning && (
-                          <p className="text-ash/80 border-t border-white/5 pt-1 mt-1 leading-relaxed">
+                          <p className="text-[#9c9c9c]/80 border-t border-[#212121] pt-1 mt-1 leading-relaxed">
                             {logEvent.details.reasoning}
                           </p>
                         )}
@@ -235,8 +203,8 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {/* Visualized details */}
                     {logEvent.state === "visualized" && (
                       <div className="flex items-center justify-between">
-                        <span className="text-ash uppercase font-bold tracking-wider">3D Orbit Render Window</span>
-                        <span className="text-bone font-mono">±{logEvent.details.window_hours / 2} hours centered on TCA</span>
+                        <span className="text-[#9c9c9c] uppercase tracking-wider">3D Orbit Render Window</span>
+                        <span className="text-[#f3f3f3] font-mono">±{logEvent.details.window_hours / 2} hours centered on TCA</span>
                       </div>
                     )}
 
@@ -244,21 +212,20 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {logEvent.state === "approved" && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-ash block uppercase font-bold tracking-wider">Authorized Burn</span>
-                          <span className="text-cleared-green uppercase font-bold font-mono">
+                          <span className="text-[#9c9c9c] block uppercase tracking-wider">Authorized Burn</span>
+                          <span className="text-[#98ff38] font-mono">
                             {logEvent.details.chosen_option_id?.split('_').slice(-2).join(' ')}
                           </span>
                         </div>
                         <div>
-                          <span className="text-ash block uppercase font-bold tracking-wider">Cleared By</span>
-                          <span className="text-bone flex items-center space-x-1">
-                            <User className="h-3 w-3 text-ash inline" />
-                            <span>{logEvent.actor} ({logEvent.details.operator_role})</span>
+                          <span className="text-[#9c9c9c] block uppercase tracking-wider">Cleared By</span>
+                          <span className="text-[#f3f3f3]">
+                            {logEvent.actor} ({logEvent.details.operator_role})
                           </span>
                         </div>
-                        <div className="col-span-2 border-t border-white/5 pt-1 flex justify-between">
-                          <span>ΔV magnitude: <strong className="text-bone">{logEvent.details.delta_v_ms?.toFixed(3)} m/s</strong></span>
-                          <span>Propellant Cost: <strong className="text-bone">{logEvent.details.fuel_cost_kg?.toFixed(2)} kg</strong></span>
+                        <div className="col-span-2 border-t border-[#212121] pt-2 flex justify-between">
+                          <span>ΔV magnitude: <strong className="text-[#f3f3f3] font-normal">{logEvent.details.delta_v_ms?.toFixed(3)} m/s</strong></span>
+                          <span>Propellant Cost: <strong className="text-[#f3f3f3] font-normal">{logEvent.details.fuel_cost_kg?.toFixed(2)} kg</strong></span>
                         </div>
                       </div>
                     )}
@@ -267,10 +234,10 @@ export default function LifecycleTimeline({ event }: LifecycleTimelineProps) {
                     {logEvent.state === "rejected" && (
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-ash uppercase font-bold tracking-wider">Rejection Operator</span>
-                          <span className="text-[#ff4444] font-bold font-mono">{logEvent.actor} ({logEvent.details.operator_role})</span>
+                          <span className="text-[#9c9c9c] uppercase tracking-wider">Rejection Operator</span>
+                          <span className="text-[#ff3355] font-mono">{logEvent.actor} ({logEvent.details.operator_role})</span>
                         </div>
-                        <p className="text-ash/80 border-t border-white/5 pt-1 mt-1 leading-relaxed">
+                        <p className="text-[#9c9c9c]/80 border-t border-[#212121] pt-1 mt-1 leading-relaxed">
                           <strong>Reason:</strong> {logEvent.details.reason}
                         </p>
                       </div>

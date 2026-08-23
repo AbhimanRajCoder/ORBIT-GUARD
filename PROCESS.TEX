@@ -1,153 +1,1184 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[12pt,a4paper]{article}
+
+% ====================== PACKAGES ======================
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{hyperref}
-\usepackage{geometry}
-\usepackage{booktabs}
 \usepackage{listings}
-\usepackage{color}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{titlesec}
 
 \geometry{margin=1in}
+\hypersetup{colorlinks=true, linkcolor=blue, urlcolor=cyan, citecolor=green}
 
-\definecolor{codegray}{rgb}{0.5,0.5,0.5}
-\definecolor{codeblue}{rgb}{0.13,0.13,1}
+% ====================== COLORS ======================
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codeframe}{RGB}{200,200,200}
+\definecolor{questionbg}{RGB}{255,248,220}
+\definecolor{answerbg}{RGB}{235,255,235}
+\definecolor{warningbg}{RGB}{255,235,235}
+\definecolor{formulabg}{RGB}{235,240,255}
+\definecolor{realdatabg}{RGB}{240,255,240}
 
+% ====================== CODE STYLE ======================
 \lstset{
-    backgroundcolor=\color{white},
-    basicstyle=\ttfamily\footnotesize,
-    breakatwhitespace=false,
-    breaklines=true,
-    captionpos=b,
-    commentstyle=\color{codegray},
-    keywordstyle=\color{codeblue},
-    numbers=left,
-    numberstyle=\tiny\color{codegray},
-    stepnumber=1,
-    numbersep=5pt,
-    showspaces=false,
-    showstringspaces=false,
+    backgroundcolor=\color{codebg},
     frame=single,
+    rulecolor=\color{codeframe},
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{red},
+    commentstyle=\color{gray}\itshape,
+    breaklines=true,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    showstringspaces=false,
     tabsize=2
 }
 
-\title{\textbf{OrbitGuard: Real-Time Spacecraft Collision Avoidance System \\ Technical Implementation and Verification Report}}
-\author{Mission Control Systems Engineer}
-\date{\today}
+% ====================== CUSTOM BOXES ======================
+\newtcolorbox{questionbox}[1][]{
+    colback=questionbg, colframe=orange!70!black,
+    title={\textbf{Counter Question}}, fonttitle=\bfseries,
+    #1
+}
 
+\newtcolorbox{answerbox}[1][]{
+    colback=answerbg, colframe=green!50!black,
+    title={\textbf{How to Answer}}, fonttitle=\bfseries,
+    #1
+}
+
+\newtcolorbox{formulabox}[1][]{
+    colback=formulabg, colframe=blue!50!black,
+    title={\textbf{Formula}}, fonttitle=\bfseries,
+    #1
+}
+
+\newtcolorbox{realdatabox}[1][]{
+    colback=realdatabg, colframe=green!60!black,
+    title={\textbf{Real Data Walkthrough}}, fonttitle=\bfseries,
+    #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+    colback=warningbg, colframe=red!60!black,
+    title={\textbf{Important Limitation}}, fonttitle=\bfseries,
+    #1
+}
+
+% ====================== HEADER ======================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textbf{OrbitGuard Technical Deep Dive}}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{\small OrbitGuard -- Space Collision Avoidance System}
+
+% ====================== DOCUMENT ======================
 \begin{document}
 
-\maketitle
+% ====================== TITLE PAGE ======================
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+{\Huge\bfseries OrbitGuard\\[0.3cm] Technical Deep Dive}\\[1cm]
+{\Large\itshape Complete Guide to Physics, Formulas, Data Formats,\\and Threat Calculation Pipeline}\\[2cm]
+{\large A step-by-step explanation with real satellite data,\\
+every formula traced from theory to Python code,\\
+and counter-questions with answers for interviews and presentations.}\\[3cm]
+{\large\textbf{System:} OrbitGuard Space Collision Avoidance Backend}\\[0.3cm]
+{\large\textbf{Stack:} Python, FastAPI, SGP4, NumPy, Supabase}\\[0.3cm]
+{\large\textbf{Data Source:} CelesTrak / Space-Track (TLE Format)}\\[2cm]
+{\large August 2026}
+\end{titlepage}
 
-\begin{abstract}
-This document details the architectural design, physical and mathematical formulations, frontend-backend data contracts, and automated verification validation for the OrbitGuard system. OrbitGuard is an operational decision support system that predicts, evaluates, and plans evasive maneuvers for satellites in Low Earth Orbit (LEO) threatened by space debris. 
-\end{abstract}
+\tableofcontents
+\newpage
 
-\section{System Architecture}
-OrbitGuard is structured as a decoupled full-stack platform consisting of:
+% ==============================================================
+% SECTION 1: WHAT IS ORBITGUARD
+% ==============================================================
+\section{What is OrbitGuard and What Problem Does It Solve?}
+
+\subsection{The Problem: Space is Getting Crowded}
+There are over 16,000 active satellites in orbit right now. Add to that millions of pieces of dead satellites, rocket bodies, and debris fragments. Every single one of these objects is moving at approximately 7--8 km/s (about 28,000 km/h) in Low Earth Orbit (LEO). At that speed, even a 1 cm piece of debris can destroy a satellite.
+
+Satellite operators receive conjunction warnings (``these two objects might come close''), but they face three big problems:
 \begin{enumerate}
-    \item \textbf{Physics Engine (Python/FastAPI):} Runs the SGP4 propagator, relative orbit mechanics calculations, Clohessy-Wiltshire (CW) relative-motion targeting, and Akella-Alfriend 2D collision probability calculation.
-    \item \textbf{Database (Supabase):} Retains the state of active conjunction alerts, orbital parameters, and approved maneuver logs.
-    \item \textbf{Frontend Application (Next.js/TypeScript):} Provides a real-time Mission Control dashboard, 3D WebGL Earth/orbit visualizer (Three.js), and analytical telemetry panels.
-    \item \textbf{Proxy Layer (Next.js API Routes):} Serves as the interface wrapper translating frontend React hooks calls into backend FastAPI requests.
+    \item \textbf{Too many warnings:} Most are false alarms. Operators get hundreds of alerts.
+    \item \textbf{No actionable plan:} Warnings say ``objects will be close'' but do not say ``move your satellite THIS much, in THIS direction, and it will cost THIS much fuel.''
+    \item \textbf{No easy comparison:} If there are multiple ways to dodge, which one is best?
 \end{enumerate}
 
-\section{Mathematical Formulations}
+\subsection{OrbitGuard's Solution}
+OrbitGuard is a \textbf{smart satellite collision avoidance system} built as a 7-pillar pipeline:
+\begin{enumerate}
+    \item \textbf{Threat Triage} -- Filter 16,000+ satellites and find the real threats
+    \item \textbf{Risk Explanation} -- Explain the danger in plain English using AI
+    \item \textbf{Maneuver Generation} -- Calculate exactly how to dodge (direction, speed, fuel)
+    \item \textbf{Trade-off Comparison} -- Compare multiple dodge options and recommend the best
+    \item \textbf{Visualization} -- Show everything on a 3D globe
+    \item \textbf{Human-in-the-Loop Approval} -- Require a human operator to confirm before any action
+    \item \textbf{Audit Trail} -- Create a tamper-proof record of every decision
+\end{enumerate}
 
-\subsection{SGP4 Orbital Propagation and ECEF Rotation}
-NORAD Two-Line Element (TLE) sets are propagated using the Simplified General Perturbations 4 (SGP4) model. The output is represented in the Earth-Centered Inertial (TEME) frame at time $t$:
-\begin{equation}
-    \vec{r}_{\text{TEME}}(t) = [x, y, z]^T \quad (\text{km}), \qquad \vec{v}_{\text{TEME}}(t) = [\dot{x}, \dot{y}, \dot{z}]^T \quad (\text{km/s})
-\end{equation}
-To render these coordinates against a fixed, non-rotating Earth mesh in WebGL, positions are transformed to the Earth-Centered Earth-Fixed (ECEF) frame using Greenwich Mean Sidereal Time ($\text{GMST}$):
-\begin{equation}
-    \vec{r}_{\text{ECEF}}(t) = \mathbf{R}_z(\text{GMST}(t)) \, \vec{r}_{\text{TEME}}(t)
-\end{equation}
-where the rotation matrix is defined as:
-\begin{equation}
-    \mathbf{R}_z(\theta) = \begin{pmatrix}
-        \cos\theta & \sin\theta & 0 \\
-        -\sin\theta & \cos\theta & 0 \\
-        0 & 0 & 1
-    \end{pmatrix}
-\end{equation}
+\begin{warningbox}
+OrbitGuard is a \textbf{screening and planning tool}, NOT a certified collision alert system. Real certified alerts (CDMs -- Conjunction Data Messages) come from military/government tracking systems with radar data and covariance matrices. We use publicly available TLE data for \textbf{probable risk screening} to help operators plan faster.
+\end{warningbox}
 
-\subsection{Collision Probability (Akella-Alfriend 2D Analytical)}
-The collision plane is defined perpendicular to the relative velocity vector at Time of Closest Approach (TCA):
-\begin{equation}
-    \hat{e}_z = \frac{\Delta\vec{v}}{|\Delta\vec{v}|}, \qquad \hat{e}_x = \frac{\Delta\vec{r} \times \Delta\vec{v}}{|\Delta\vec{r} \times \Delta\vec{v}|}, \qquad \hat{e}_y = \hat{e}_z \times \hat{e}_x
-\end{equation}
-Position covariances in the Radial-Transverse-Normal (RTN) frame are rotated to ECI:
-\begin{equation}
-    \mathbf{C}_{\text{ECI}} = \sigma_R^2 (\hat{u}_R \otimes \hat{u}_R) + \sigma_T^2 (\hat{u}_T \otimes \hat{u}_T) + \sigma_N^2 (\hat{u}_N \otimes \hat{u}_N)
-\end{equation}
-and projected onto the 2D collision plane to form the $2\times2$ encounter covariance $\mathbf{C}_e$. The probability of collision $P_c$ is:
-\begin{equation}
-    P_c = \frac{R_{\text{combined}}^2}{2\sqrt{\det(\mathbf{C}_e)}} \exp\left( -\frac{1}{2} \vec{r}_p^T \mathbf{C}_e^{-1} \vec{r}_p \right)
-\end{equation}
-where $R_{\text{combined}}$ is the combined hard-body radius (default 15 meters) and $\vec{r}_p = [x_p, y_p]^T$ is the projected miss position.
+\begin{questionbox}
+``Is this a real collision avoidance system? Can satellites actually use this?''
+\end{questionbox}
+\begin{answerbox}
+OrbitGuard is a decision-support tool. It uses real physics (SGP4 propagation, Clohessy-Wiltshire relative dynamics, Tsiolkovsky rocket equation) with real satellite data from CelesTrak. However, it is a \textbf{simplified screening tool} because:
+\begin{itemize}
+    \item We use TLEs instead of classified CDMs with radar-grade accuracy
+    \item We do not compute Probability of Collision ($P_c$) with covariance propagation
+    \item We assume default spacecraft mass (500 kg) and thruster efficiency ($I_{sp}$ = 220s) since individual satellite specs are not public
+\end{itemize}
+The physics and math are \textbf{real and industry-standard}. The data is \textbf{publicly available but less precise} than what actual operators use.
+\end{answerbox}
 
-\subsection{Clohessy-Wiltshire Relative-Motion Maneuver Solver}
-Relative motion in a circular orbit of mean motion $n = \sqrt{GM/a^3}$ is modeled via the Clohessy-Wiltshire equations:
-\begin{align}
-    x(\Delta t) &= \frac{\Delta v_R}{n}\sin(n\Delta t) + \frac{2\Delta v_T}{n}\bigl(1 - \cos(n\Delta t)\bigr) \\
-    y(\Delta t) &= \frac{2\Delta v_R}{n}\bigl(\cos(n\Delta t) - 1\bigr) + \frac{\Delta v_T}{n}\bigl(4\sin(n\Delta t) - 3n\Delta t\bigr) \\
-    z(\Delta t) &= \frac{\Delta v_N}{n}\sin(n\Delta t)
-\end{align}
-where $\Delta v_R$, $\Delta v_T$, $\Delta v_N$ are the burn impulse components in the Hill frame, and $\Delta t = t_{\text{TCA}} - t_{\text{burn}}$. Evasive maneuvers are target-solved using the transverse burn ratio:
-\begin{equation}
-    \Delta v_T \approx \frac{(d_{\text{target}} - d_{\text{current}}) \times 1000}{3 \Delta t} \quad (\text{m/s})
-\end{equation}
+% ==============================================================
+% SECTION 2: DATA -- WHERE IT COMES FROM AND WHAT IT LOOKS LIKE
+% ==============================================================
+\newpage
+\section{Data: CelesTrak, TLEs, and the Raw Input}
 
-\subsection{Tsiolkovsky Rocket Equation}
-Propellant consumption is calculated using:
-\begin{equation}
-    m_{\text{prop}} = m_0 \left( 1 - \exp\left( -\frac{\Delta V}{I_{\text{sp}} g_0} \right) \right)
-\end{equation}
-where $m_0$ is the wet spacecraft mass (default 500 kg), $I_{\text{sp}}$ is the specific impulse (default 220 seconds), and $g_0 = 9.80665 \text{ m/s}^2$.
+\subsection{What is CelesTrak?}
+CelesTrak (\url{https://celestrak.org}) is a public service maintained by Dr.\ T.S.\ Kelso that redistributes satellite orbital data. The data originates from the US Space Command's (formerly NORAD's) tracking network.
 
-\section{Frontend-Backend Contract}
-To ensure complete physical accuracy, all telemetry rendered in the user interface originates directly from the backend calculation endpoints. The contracts are maintained via explicit TypeScript models:
+OrbitGuard fetches data from this URL:
+\begin{lstlisting}[language=bash]
+https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle
+\end{lstlisting}
 
-\begin{lstlisting}[language=TypeScript, caption={Backend Schema Interfaces}]
-export interface BackendManeuverOption {
-  option_id: string;
-  label: string; // 'small burn', 'medium burn', 'large burn'
-  delta_v_ms: number;
-  fuel_cost_kg: number;
-  resulting_min_distance_km: number;
-  cw_divergence_flag: boolean;
-  secondary_conjunction_warning: string | null;
+This returns a plain text file with satellite data in \textbf{TLE (Two-Line Element) format}.
+
+\subsection{What is a TLE (Two-Line Element Set)?}
+A TLE is a standardized text format that describes a satellite's orbit using 2 lines of exactly 69 characters each, preceded by a name line. Here is a \textbf{real example} from our cached data file (\texttt{tle\_cache\_active.json}):
+
+\begin{realdatabox}[title=Real TLE Example: ISS (ZARYA)]
+\begin{lstlisting}[language={}]
+Name:  ISS (ZARYA)
+Line1: 1 25544U 98067A   26232.28504506  .00016358  00000+0  28755-3 0  9994
+Line2: 2 25544  51.6398 131.1579 0005612 128.9281 231.2379 15.50213107481622
+\end{lstlisting}
+\end{realdatabox}
+
+\subsection{TLE Field-by-Field Breakdown}
+
+\subsubsection{Line 1 Fields}
+
+\begin{longtable}{p{2.5cm} p{3cm} p{7.5cm}}
+\toprule
+\textbf{Columns} & \textbf{Field} & \textbf{Meaning} \\
+\midrule
+\endhead
+01 & Line Number & Always ``1'' for Line 1 \\
+03--07 & NORAD ID & Unique catalog number. ISS = 25544 \\
+08 & Classification & U = Unclassified, C = Classified, S = Secret \\
+10--17 & Int'l Designator & Launch year (98), launch number (067), piece (A). ISS launched in 1998, was the 67th launch, piece A (primary payload) \\
+19--32 & Epoch & \textbf{26232.28504506} means Year 20\textbf{26}, Day \textbf{232.28504506}. The integer part (232) is the day-of-year, the decimal (.285...) is the fraction of day (= approximately 06:50 UTC) \\
+34--43 & Mean Motion Derivative & Rate of change of mean motion (drag indicator). Value .00016358 means the satellite is losing altitude due to atmospheric drag \\
+45--52 & Mean Motion 2nd Deriv & Second derivative (usually 0 for most satellites) \\
+54--61 & BSTAR Drag Term & Atmospheric drag coefficient. \texttt{28755-3} means $0.28755 \times 10^{-3} = 0.00028755$ \\
+63 & Ephemeris Type & Always 0 for standard SGP4 \\
+65--68 & Element Set Number & Incremented each time a new TLE is issued \\
+69 & Checksum & Modulo-10 checksum for error detection \\
+\bottomrule
+\end{longtable}
+
+\subsubsection{Line 2 Fields}
+
+\begin{longtable}{p{2.5cm} p{3cm} p{7.5cm}}
+\toprule
+\textbf{Columns} & \textbf{Field} & \textbf{Meaning} \\
+\midrule
+\endhead
+01 & Line Number & Always ``2'' for Line 2 \\
+03--07 & NORAD ID & Same as Line 1 (25544 for ISS) \\
+09--16 & Inclination ($i$) & Orbit tilt relative to equator in degrees. ISS = 51.6398\textdegree{} \\
+18--25 & RAAN ($\Omega$) & Right Ascension of Ascending Node in degrees. Where the orbit crosses the equator going north = 131.1579\textdegree \\
+27--33 & Eccentricity ($e$) & Shape of orbit. \textbf{No leading decimal point.} 0005612 means $e = 0.0005612$ (nearly circular) \\
+35--42 & Arg.\ of Perigee ($\omega$) & Where the lowest point of the orbit is, in degrees = 128.9281\textdegree \\
+44--51 & Mean Anomaly ($M$) & Where the satellite is in its orbit right now, in degrees = 231.2379\textdegree \\
+53--63 & Mean Motion ($n$) & \textbf{Revolutions per day.} ISS = 15.50213107, meaning it orbits Earth about 15.5 times per day (once every $\approx$93 minutes) \\
+64--68 & Revolution Number & Total orbits completed since launch \\
+69 & Checksum & Modulo-10 checksum \\
+\bottomrule
+\end{longtable}
+
+\subsection{How OrbitGuard Stores TLE Data}
+
+OrbitGuard fetches TLEs from CelesTrak and stores them in a local JSON cache file (\texttt{data/tle\_cache\_active.json}). The format:
+
+\begin{lstlisting}[language={}]
+{
+  "timestamp": 1787240885.338021,
+  "source": "celestrak",
+  "satellites": [
+    {
+      "name": "ISS (ZARYA)",
+      "norad_id": "25544",
+      "line1": "1 25544U 98067A   26232.28...",
+      "line2": "2 25544  51.6398 131.1579..."
+    },
+    {
+      "name": "STARLINK-38085",
+      "norad_id": "69996",
+      "line1": "1 69996U 26159X   26232.28...",
+      "line2": "2 69996  97.2845  72.8808..."
+    }
+    ...16,000+ more entries...
+  ]
 }
 \end{lstlisting}
 
-\subsection{Operational Mode Features}
+Key points about the cache:
 \begin{itemize}
-    \item \textbf{Disqualification Rendering:} Burn options resulting in secondary conjunctions or containing $P_c \geq 1\times 10^{-4}$ display a zero composite score and are greyed out in the interface.
-    \item \textbf{CW Divergence Flags:} Displays warning prompts when linear CW targets diverge from full SGP4 predictions by $>10\%$.
-    \item \textbf{Developer Audit Mode:} Introduces a toggle displaying the exact backend Pydantic field source path on hovering over metrics (e.g. \texttt{backend: chosen\_option.delta\_v\_ms}).
+    \item \textbf{Cache expiry:} 2 hours (\texttt{CACHE\_EXPIRY\_SECONDS = 7200})
+    \item \textbf{Fallback chain:} CelesTrak $\rightarrow$ Space-Track $\rightarrow$ Stale Cache
+    \item \textbf{Total satellites:} Approximately 16,000+ in the ``active'' group
 \end{itemize}
 
-\section{Verification and Test Results}
-A rigorous automated testing suite verifies axis/frame alignment, scale consistency, closed orbital trajectories, and data contract payloads:
+\begin{questionbox}
+``Why don't you use CDMs (Conjunction Data Messages) instead of TLEs?''
+\end{questionbox}
+\begin{answerbox}
+CDMs are far more accurate. They include:
+\begin{itemize}
+    \item Radar-grade precise state vectors
+    \item Covariance matrices (uncertainty in position/velocity)
+    \item Calculated Probability of Collision ($P_c$)
+\end{itemize}
+However, CDMs are \textbf{restricted/classified}. Only registered satellite operators receive them through secure government channels (CSpOC -- Combined Space Operations Center). Public developers cannot access CDMs. We use TLEs because they are the best publicly available data. TLEs have inherent uncertainties of 1--10+ km, which is why we call this a ``screening tool'' not a ``certified alert system.''
+\end{answerbox}
 
-\begin{table}[h]
-\centering
-\begin{tabular}{lllc}
+% ==============================================================
+% SECTION 3: PILLAR 1 -- THREAT TRIAGE
+% ==============================================================
+\newpage
+\section{Pillar 1: Threat Triage -- Finding Real Threats}
+
+\subsection{The Challenge: Why Not Just Check Everything?}
+With 16,000 satellites, checking every pair means:
+\[
+\text{Pairs} = \frac{16000 \times 15999}{2} \approx 128 \text{ million combinations}
+\]
+Propagating orbits for 128 million pairs over 48 hours at 60-second intervals is computationally impossible in real time. So OrbitGuard uses a \textbf{three-stage funnel}:
+
+\begin{enumerate}
+    \item \textbf{Stage 1: Orbital Envelope Filter} (eliminates $\sim$90\% of candidates)
+    \item \textbf{Stage 2: Coarse Screening} (10-minute interval check, eliminates $\sim$99\% of remaining)
+    \item \textbf{Stage 3: Fine Screening} (60-second interval check, finds the exact closest approach)
+\end{enumerate}
+
+\subsection{Stage 1: Orbital Envelope Filter}
+
+\textbf{Concept:} Two satellites can only collide if their orbits overlap in altitude. If Satellite A orbits between 400--420 km and Satellite B orbits between 35,000--36,000 km, they will NEVER meet.
+
+\begin{formulabox}[title=Formula: Semi-Major Axis from Mean Motion]
+The TLE gives us \textbf{mean motion} $n_{\text{Kozai}}$ in radians/minute. We convert to radians/second and compute the semi-major axis $a$:
+\[
+n = \frac{n_{\text{Kozai}}}{60.0} \quad \text{(convert rad/min to rad/s)}
+\]
+\[
+a = \left(\frac{\mu}{n^2}\right)^{1/3}
+\]
+where $\mu = 398600.4418 \text{ km}^3/\text{s}^2$ is Earth's gravitational parameter (WGS-84 standard).
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Perigee and Apogee Radii]
+Using eccentricity $e$ from the TLE:
+\[
+r_{\text{perigee}} = a \cdot (1 - e) \quad \text{(lowest point of orbit, from Earth's center)}
+\]
+\[
+r_{\text{apogee}} = a \cdot (1 + e) \quad \text{(highest point of orbit, from Earth's center)}
+\]
+\textbf{Note:} These are distances from Earth's \textbf{center}, not from the surface. Earth's radius is 6378.137 km, so subtract that to get altitude.
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Overlap Condition]
+Candidate is \textbf{eliminated} (cannot possibly encounter the protected asset) if:
+\[
+r_{a,\text{cand}} < r_{p,\text{asset}} - 100\text{ km} \quad \text{OR} \quad r_{p,\text{cand}} > r_{a,\text{asset}} + 100\text{ km}
+\]
+The 100 km buffer (\texttt{ENVELOPE\_BUFFER\_KM}) accounts for TLE uncertainties.
+\end{formulabox}
+
+\begin{realdatabox}[title=Real Data: ISS Orbital Envelope]
+From the ISS TLE:
+\begin{itemize}
+    \item Mean motion: $n = 15.50213107$ rev/day $= 15.50213107 \times \frac{2\pi}{86400} = 0.001127$ rad/s
+    \item Eccentricity: $e = 0.0005612$ (almost perfectly circular)
+    \item Semi-major axis: $a = \left(\frac{398600.4418}{0.001127^2}\right)^{1/3} \approx 6793$ km
+    \item Perigee radius: $r_p = 6793 \times (1 - 0.0005612) \approx 6789$ km (altitude $\approx$ 411 km)
+    \item Apogee radius: $r_a = 6793 \times (1 + 0.0005612) \approx 6797$ km (altitude $\approx$ 419 km)
+\end{itemize}
+Only satellites with orbits overlapping the range $[6689, 6897]$ km (with 100 km buffer) will pass to Stage 2.
+\end{realdatabox}
+
+\subsection{Stage 2: Coarse Screening (10-Minute Steps)}
+
+For candidates that pass the envelope filter, we \textbf{propagate both orbits forward in time} using the SGP4 algorithm and check the Euclidean distance between them.
+
+\textbf{What is SGP4?}
+SGP4 (Simplified General Perturbations model 4) is the standard algorithm that takes a TLE and computes a satellite's position and velocity at any future time. It accounts for:
+\begin{itemize}
+    \item Earth's non-spherical shape (J2 oblateness effect)
+    \item Atmospheric drag (for LEO)
+    \item Lunar and solar gravitational perturbations
+    \item General relativistic effects (minor)
+\end{itemize}
+
+\textbf{Coarse screening parameters:}
+\begin{itemize}
+    \item Time window: 48 hours into the future
+    \item Step size: Every 10 minutes = 288 time steps
+    \item Threshold: If minimum distance $\geq 50$ km (\texttt{COARSE\_THRESHOLD\_KM}), eliminate
+\end{itemize}
+
+\begin{formulabox}[title=Formula: 3D Euclidean Distance]
+At each time step, SGP4 gives us position vectors $\vec{r}_{\text{asset}} = (x_a, y_a, z_a)$ and $\vec{r}_{\text{cand}} = (x_c, y_c, z_c)$ in the TEME (True Equator Mean Equinox) coordinate frame. The distance:
+\[
+d = \sqrt{(x_c - x_a)^2 + (y_c - y_a)^2 + (z_c - z_a)^2}
+\]
+\textbf{Code optimization:} We compare $d^2$ (squared distance) against the threshold squared to avoid the expensive \texttt{sqrt()} operation inside the inner loop:
+\[
+d^2 = (x_c - x_a)^2 + (y_c - y_a)^2 + (z_c - z_a)^2 \quad \text{compare with} \quad (50)^2 = 2500 \text{ km}^2
+\]
+\end{formulabox}
+
+\subsection{Stage 3: Fine Screening (60-Second Steps)}
+
+For candidates that pass coarse screening (minimum distance $< 50$ km at 10-minute intervals), we re-propagate at \textbf{60-second intervals} over the same 48-hour window to find the \textbf{exact} time and distance of closest approach.
+
+\textbf{Fine screening parameters:}
+\begin{itemize}
+    \item Step size: Every 60 seconds = 2880 time steps
+    \item Threshold: User-configurable, default 5 km
+    \item Extra filters:
+    \begin{itemize}
+        \item \textbf{Co-location filter:} If the object stays within 0.5 km for the \textit{entire} 48-hour window, it is a physically attached module (e.g., ISS docked spacecraft), not a threat. Exclude it.
+        \item \textbf{Sanity floor:} Distances under 50 meters (0.05 km) are flagged as unrealistic TLE artifacts and excluded.
+        \item \textbf{Docked module exclusion list:} Known modules physically attached to the ISS (e.g., ZARYA, ZVEZDA, NAUKA, docked CREW DRAGON, PROGRESS vehicles) are hardcoded as excluded.
+    \end{itemize}
+\end{itemize}
+
+\begin{realdatabox}[title=Real Data: Triage Performance]
+In validation testing:
+\begin{itemize}
+    \item Total satellites loaded: 16,073
+    \item Protected asset: ISS (NORAD 25544)
+    \item Threshold: 50 km
+    \item Results: 58 conjunction alerts generated in 5.69 seconds
+    \item ISS-specific alerts: 5 (after filtering out 9 known docked modules)
+\end{itemize}
+\end{realdatabox}
+
+\begin{questionbox}
+``Why 48 hours? Why not 7 days or 1 hour?''
+\end{questionbox}
+\begin{answerbox}
+48 hours is a standard screening window in the conjunction assessment community:
+\begin{itemize}
+    \item \textbf{Too short (< 24 hours):} Not enough lead time to plan and execute a maneuver
+    \item \textbf{Too long (> 72 hours):} TLE accuracy degrades significantly. SGP4 predictions become unreliable beyond 2--3 days because TLEs do not account for real-time atmospheric density changes, solar activity, or precise drag effects
+    \item \textbf{48 hours} gives enough time to detect, analyze, plan, and execute a maneuver while keeping propagation errors manageable
+\end{itemize}
+\end{answerbox}
+
+\begin{questionbox}
+``What is the accuracy of this screening? How many false positives?''
+\end{questionbox}
+\begin{answerbox}
+TLE-based screening inherently has significant uncertainty (1--10+ km position errors). This means:
+\begin{itemize}
+    \item We will catch most genuine close approaches (high recall)
+    \item We will also flag some events that turn out to be non-threatening (false positives)
+    \item We will NOT catch events where TLE errors cause us to think objects are far apart when they are actually close (false negatives -- this is the dangerous case)
+\end{itemize}
+This is why we call it a ``screening tool'' -- the output is a \textbf{candidate list for human review}, not a definitive collision prediction. Real systems use radar tracking and covariance analysis for definitive alerts.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 4: PILLAR 2 -- RISK SCORING AND EXPLANATION
+% ==============================================================
+\newpage
+\section{Pillar 2: Risk Scoring and AI Explanation}
+
+\subsection{Risk Score Calculation}
+
+For each conjunction candidate that passes the triage filter, we compute a \textbf{risk score from 0 to 100} that combines two factors:
+
+\begin{formulabox}[title=Formula: Distance Factor ($F_d$)]
+\[
+F_d = \begin{cases}
+1.0 & \text{if } d_{\min} \leq 0 \text{ (collision)} \\
+0.0 & \text{if } d_{\min} \geq d_{\text{threshold}} \text{ (safe)} \\
+1.0 - \dfrac{d_{\min}}{d_{\text{threshold}}} & \text{otherwise}
+\end{cases}
+\]
+where $d_{\text{threshold}} = 5.0$ km by default.
+
+\textbf{Example:} If $d_{\min} = 2.0$ km and $d_{\text{threshold}} = 5.0$ km:
+$F_d = 1.0 - \frac{2.0}{5.0} = 0.60$
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Time Factor ($F_t$)]
+\[
+h = \max\left(0.0,\; \min\left(48.0,\; t_{\text{TCA\_hours}}\right)\right) \quad \text{(clamp hours to 0--48 range)}
+\]
+\[
+F_t = 1.0 - \frac{h}{48.0}
+\]
+
+\textbf{Examples:}
+\begin{itemize}
+    \item TCA in 2 hours: $F_t = 1 - \frac{2}{48} = 0.958$ (very urgent)
+    \item TCA in 24 hours: $F_t = 1 - \frac{24}{48} = 0.500$ (moderate urgency)
+    \item TCA in 47 hours: $F_t = 1 - \frac{47}{48} = 0.021$ (low urgency)
+\end{itemize}
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Final Risk Score]
+\[
+\text{Base Score} = (F_d \times 0.70 + F_t \times 0.30) \times 100.0
+\]
+\[
+\text{Risk Score} = \max\left(0.0,\; \min\left(100.0,\; \text{Base Score} \times P_{\text{mission}}\right)\right)
+\]
+where:
+\begin{itemize}
+    \item Weight $w_d = 0.70$ (70\%) for distance -- distance is the primary driver
+    \item Weight $w_t = 0.30$ (30\%) for time -- urgency matters but less than proximity
+    \item $P_{\text{mission}}$ = mission priority multiplier (default 1.0, can be set higher for critical assets like ISS)
+\end{itemize}
+\end{formulabox}
+
+\begin{realdatabox}[title=Worked Example: Risk Score for a 2.0 km Approach in 6 Hours]
+Given: $d_{\min} = 2.0$ km, $t_{\text{TCA}} = 6$ hours, $P_{\text{mission}} = 1.0$
+\begin{enumerate}
+    \item $F_d = 1.0 - \frac{2.0}{5.0} = 0.60$
+    \item $F_t = 1.0 - \frac{6.0}{48.0} = 0.875$
+    \item Base Score $= (0.60 \times 0.70 + 0.875 \times 0.30) \times 100 = (0.42 + 0.2625) \times 100 = 68.25$
+    \item Final Score $= \min(100, 68.25 \times 1.0) = \mathbf{68.25}$ (High risk)
+\end{enumerate}
+\end{realdatabox}
+
+\subsection{AI-Powered Risk Explanation (Plain Language)}
+
+After computing the risk score, OrbitGuard sends the structured alert data to an LLM (Large Language Model) to generate a plain-English explanation. This makes it understandable to operators who are not orbital mechanics experts.
+
+\textbf{Provider hierarchy:}
+\begin{enumerate}
+    \item \textbf{Gemini API} (Primary) -- Google's Gemini 2.5 Flash model
+    \item \textbf{Groq API} (Fallback) -- If Gemini fails or key is missing
+    \item \textbf{Template Fallback} -- If both LLM APIs fail, generates a structured template string
+\end{enumerate}
+
+The prompt sent to the LLM includes:
+\begin{lstlisting}[language={}]
+Alert Structured Data:
+- Candidate Name: COSMOS 2251 DEB
+- NORAD ID: 34427
+- Minimum Distance: 2.345 km
+- Time to Closest Approach: 6.20 hours
+- Risk Score: 68.25/100
+- Mission Priority: 1.0
+\end{lstlisting}
+
+\textbf{TLE Staleness Caveat:} If the candidate's TLE epoch is more than 12 hours old, the explanation is prepended with: ``WARNING: Conjunction calculations are based on stale tracking data (epoch is >12 hours old).''
+
+\begin{questionbox}
+``Why use an AI model instead of just showing the numbers?''
+\end{questionbox}
+\begin{answerbox}
+An operator reading ``2.345 km, 6.2 hours, score 68.25'' needs to mentally interpret what that means. An explanation like ``This is a high-risk conjunction. A piece of COSMOS 2251 debris is predicted to pass within 2.3 km of your asset in approximately 6 hours. The risk score of 68/100 reflects the close proximity combined with the short warning time. Immediate review of avoidance options is recommended.'' allows faster decision-making. In high-stress situations (multiple simultaneous alerts), this saves critical minutes.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 5: PILLAR 3 -- MANEUVER GENERATION
+% ==============================================================
+\newpage
+\section{Pillar 3: Maneuver Generation -- How to Dodge}
+
+This is the most physics-heavy pillar. We need to answer: \textit{``If we fire the engine, in what direction, how hard, and how much fuel will it cost?''}
+
+\subsection{Step 1: Build the Hill (RIC) Reference Frame}
+
+\textbf{Concept:} Instead of looking at two satellites from Earth's perspective (inertial frame), we look at the candidate object \textit{from the protected satellite's perspective} (rotating frame). This is called the \textbf{Hill frame} or \textbf{RIC (Radial, In-track, Cross-track) frame}.
+
+Imagine you are sitting on the ISS looking out the window. Relative to you:
+\begin{itemize}
+    \item \textbf{Radial ($\hat{e}_R$):} Points away from Earth (up from your head)
+    \item \textbf{In-track ($\hat{e}_I$):} Points in the direction you are moving (forward)
+    \item \textbf{Cross-track ($\hat{e}_C$):} Points perpendicular to your orbital plane (sideways)
+\end{itemize}
+
+\begin{formulabox}[title=Formula: Hill Frame Basis Vectors]
+Given the protected asset's inertial position $\vec{r}_p$ and velocity $\vec{v}_p$:
+\[
+\hat{e}_R = \frac{\vec{r}_p}{\|\vec{r}_p\|} \quad \text{(radial -- pointing away from Earth)}
+\]
+\[
+\hat{e}_C = \frac{\vec{r}_p \times \vec{v}_p}{\|\vec{r}_p \times \vec{v}_p\|} \quad \text{(cross-track -- orbit normal)}
+\]
+\[
+\hat{e}_I = \hat{e}_C \times \hat{e}_R \quad \text{(in-track -- completes right-hand system)}
+\]
+The transformation matrix from inertial (ECI) to Hill frame:
+\[
+\mathbf{T}_{\text{ECI}\to\text{Hill}} = \begin{bmatrix} \hat{e}_R^T \\ \hat{e}_I^T \\ \hat{e}_C^T \end{bmatrix}
+\]
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Relative State in Hill Frame]
+\[
+\vec{r}_{\text{rel}} = \mathbf{T}_{\text{ECI}\to\text{Hill}} \cdot (\vec{r}_c - \vec{r}_p)
+\]
+\[
+\vec{v}_{\text{rel}} = \mathbf{T}_{\text{ECI}\to\text{Hill}} \cdot (\vec{v}_c - \vec{v}_p) - \vec{\omega}_{\text{Hill}} \times \vec{r}_{\text{rel}}
+\]
+where $\vec{\omega}_{\text{Hill}} = [0, 0, n]^T$ and $n = \frac{\|\vec{r}_p \times \vec{v}_p\|}{\|\vec{r}_p\|^2}$ is the orbital angular velocity.
+
+The $\vec{\omega} \times \vec{r}$ term is the \textbf{Coriolis correction} -- it accounts for the fact that the Hill frame itself is rotating.
+\end{formulabox}
+
+\subsection{Step 2: Clohessy-Wiltshire (CW) Equations}
+
+\textbf{What are CW equations?}
+The Clohessy-Wiltshire equations are a \textit{linearized} model of how two objects move relative to each other in nearby circular orbits. Think of it as: ``if I give the satellite a small push now, where will it drift to later?''
+
+\textbf{Assumption:} The reference orbit (protected asset) is nearly circular, and the relative distance is small compared to the orbital radius. For LEO ($r \approx 6800$ km), ``small'' means the initial separation should ideally be $\lesssim 500$ km for CW to be accurate.
+
+\begin{formulabox}[title=Formula: CW State Transition Matrix]
+The state at future time $t$ is:
+\[
+\begin{bmatrix} \vec{r}(t) \\ \vec{v}(t) \end{bmatrix} = \begin{bmatrix} \boldsymbol{\Phi}_{rr} & \boldsymbol{\Phi}_{rv} \\ \boldsymbol{\Phi}_{vr} & \boldsymbol{\Phi}_{vv} \end{bmatrix} \begin{bmatrix} \vec{r}_0 \\ \vec{v}_0 \end{bmatrix}
+\]
+
+The \textbf{position-from-position} block:
+\[
+\boldsymbol{\Phi}_{rr}(t) = \begin{bmatrix} 4 - 3\cos(nt) & 0 & 0 \\ 6(\sin(nt) - nt) & 1 & 0 \\ 0 & 0 & \cos(nt) \end{bmatrix}
+\]
+
+The \textbf{position-from-velocity} block (this is the key one for targeting):
+\[
+\boldsymbol{\Phi}_{rv}(t) = \begin{bmatrix} \frac{\sin(nt)}{n} & \frac{2(1 - \cos(nt))}{n} & 0 \\[6pt] \frac{-2(1 - \cos(nt))}{n} & \frac{4\sin(nt) - 3nt}{n} & 0 \\[6pt] 0 & 0 & \frac{\sin(nt)}{n} \end{bmatrix}
+\]
+
+where $n = \sqrt{\mu / a^3}$ is the mean motion of the reference orbit in rad/s, and $t$ is the time interval in seconds.
+\end{formulabox}
+
+\begin{questionbox}
+``Why use linearized equations? Why not just use full orbital mechanics?''
+\end{questionbox}
+\begin{answerbox}
+CW equations give us a \textbf{closed-form analytical solution} for the targeting problem (``what velocity change do I need to reach a target position?''). Full nonlinear orbital mechanics would require iterative numerical solvers (Lambert's problem), which are more complex and slower.
+
+However, CW accuracy degrades for large initial separations. OrbitGuard handles this by:
+\begin{enumerate}
+    \item Using SGP4 to compute the TRUE unperturbed relative position at TCA (bypassing CW's baseline prediction)
+    \item Using CW only for the \textbf{perturbation} (small additional separation), not the full trajectory
+    \item Cross-validating with full nonlinear Keplerian propagation (Universal Variable method)
+    \item Flagging cases where CW diverges $>$10\% from nonlinear propagation
+\end{enumerate}
+\end{answerbox}
+
+\subsection{Step 3: Solving the Avoidance Burn}
+
+\textbf{Goal:} Find the velocity change $\Delta\vec{v}$ that moves the satellite an additional $\Delta d$ km away from the threat at the time of closest approach (TCA).
+
+\begin{formulabox}[title=Formula: Standard CW Targeting]
+The unperturbed relative position at TCA:
+\[
+\vec{r}_{\text{unperturbed}} = \boldsymbol{\Phi}_{rr} \cdot \vec{r}_0 + \boldsymbol{\Phi}_{rv} \cdot \vec{v}_0
+\]
+
+The target position (push $\Delta d$ km further along the miss direction):
+\[
+\hat{u}_{\text{dir}} = \frac{\vec{r}_{\text{unperturbed}}}{\|\vec{r}_{\text{unperturbed}}\|} \quad \text{(unit vector in the miss direction)}
+\]
+\[
+\vec{r}_{\text{target}} = \vec{r}_{\text{unperturbed}} + \hat{u}_{\text{dir}} \cdot \Delta d
+\]
+
+Standard CW solve for required post-burn velocity:
+\[
+\vec{v}_{\text{burn}} = \boldsymbol{\Phi}_{rv}^{-1} \cdot (\vec{r}_{\text{target}} - \boldsymbol{\Phi}_{rr} \cdot \vec{r}_0)
+\]
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Perturbation-Only Targeting (OrbitGuard's Enhanced Method)]
+When the initial separation $\|\vec{r}_0\|$ is large ($> 500$ km), the standard CW baseline prediction diverges from reality. OrbitGuard uses SGP4 to get the \textbf{true} unperturbed baseline, and then uses CW \textbf{only} for the small perturbation:
+
+\[
+\vec{v}_{\text{burn}} = \vec{v}_0 + \boldsymbol{\Phi}_{rv}^{-1} \cdot (\Delta d \cdot \hat{u}_{\text{dir}})
+\]
+
+This is mathematically equivalent to: ``keep the current trajectory's baseline, but add a small CW-computed correction to push $\Delta d$ km further.'' CW is accurate for this small perturbation regardless of how large $\vec{r}_0$ is.
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Delta-V Magnitude]
+The impulse required (in m/s):
+\[
+\Delta v = \|-(\vec{v}_{\text{burn}} - \vec{v}_0)\| \times 1000 \quad \text{(converting km/s to m/s)}
+\]
+The negative sign is because $\vec{v}_{\text{burn}} - \vec{v}_0$ is the velocity change of the \textit{relative} state, and the protected asset must apply the \textit{opposite} impulse.
+\end{formulabox}
+
+\subsection{Step 4: Fuel Calculation (Tsiolkovsky Rocket Equation)}
+
+\begin{formulabox}[title=Formula: Tsiolkovsky Rocket Equation]
+\[
+\Delta m = m_0 \cdot \left(1 - e^{-\frac{\Delta v}{I_{sp} \cdot g_0}}\right)
+\]
+where:
+\begin{itemize}
+    \item $\Delta m$ = propellant mass consumed (kg)
+    \item $m_0$ = spacecraft dry mass = 500 kg (default assumption)
+    \item $\Delta v$ = required velocity change (m/s)
+    \item $I_{sp}$ = specific impulse = 220 seconds (typical hydrazine monopropellant thruster)
+    \item $g_0$ = 9.80665 m/s$^2$ (standard gravitational acceleration at sea level)
+\end{itemize}
+
+\textbf{Physical meaning of $I_{sp}$:} Specific impulse tells you how ``efficient'' a rocket engine is. An $I_{sp}$ of 220 seconds means: for every kg of fuel burned, the engine can produce 220 seconds $\times$ 9.81 m/s$^2$ = 2,158 N$\cdot$s of impulse.
+\end{formulabox}
+
+\begin{realdatabox}[title=Worked Example: Fuel Cost for 0.5 m/s Burn]
+Given: $\Delta v = 0.5$ m/s, $m_0 = 500$ kg, $I_{sp} = 220$ s
+\[
+\Delta m = 500 \times \left(1 - e^{-\frac{0.5}{220 \times 9.80665}}\right) = 500 \times \left(1 - e^{-0.000232}\right)
+\]
+\[
+= 500 \times 0.000232 = \mathbf{0.1158 \text{ kg}} \approx 116 \text{ grams of fuel}
+\]
+This is a very small amount -- small burns are fuel-cheap!
+\end{realdatabox}
+
+\subsection{Step 5: Three Maneuver Options}
+
+OrbitGuard generates exactly 3 options with progressive target separations:
+\begin{center}
+\begin{tabular}{lcc}
 \toprule
-\textbf{Test ID} & \textbf{Validation Metric} & \textbf{Expected Value} & \textbf{Status} \\
+\textbf{Option} & \textbf{Target $\Delta d$} & \textbf{Philosophy} \\
 \midrule
-Check 1 & ISS ECEF Frame Transformation & Coordinates within $\pm 0.1$ km & PASS \\
-Check 2 & WGS-84 Scale Consistency & $6.371$ units vs $6378.137$ km & PASS \\
-Check 3 & Earth Rotation Alignment & Best offset error $< 1.0^{\circ}$ & PASS \\
-Check 4 & Orbit Trajectory Closure & TEME closure distance $< 0.05$ units & PASS \\
-Check 5 & TCA Position / Danger Zone & Center aligned at closest approach & PASS \\
-Pillar 3/4 & Maneuver Calculation Proxy & Matches FastAPI models field-for-field & PASS \\
-Pillar 5 & ECEF Coordinates Sampling & Sample points match backend visualizer & PASS \\
+Small Burn & +2.0 km & Minimum fuel, just enough to increase clearance \\
+Medium Burn & +5.0 km & Balanced safety-fuel trade-off \\
+Large Burn & +12.0 km & Maximum safety margin, highest fuel cost \\
 \bottomrule
 \end{tabular}
-\caption{OrbitGuard Physical and Integration Verification Results}
-\label{tab:results}
-\end{table}
+\end{center}
+
+\subsection{Step 6: Cross-Validation (CW vs.\ Nonlinear Propagation)}
+
+After computing each maneuver, OrbitGuard \textbf{independently validates} the result using full nonlinear Keplerian propagation (Universal Variable method -- not CW):
+
+\begin{enumerate}
+    \item Convert the delta-V from Hill frame back to ECI frame: $\Delta\vec{v}_{\text{ECI}} = \mathbf{T}_{\text{Hill}\to\text{ECI}} \cdot \Delta\vec{v}_{\text{Hill}}$
+    \item Add it to the protected asset's inertial velocity: $\vec{v}_{\text{post}} = \vec{v}_{p,\text{burn}} + \Delta\vec{v}_{\text{ECI}}$
+    \item Propagate the post-burn state forward to TCA using the Universal Variable Kepler solver
+    \item Compute the actual distance to the candidate at TCA
+\end{enumerate}
+
+If the CW-predicted distance diverges $> 10\%$ from the nonlinear result, a \texttt{cw\_divergence\_flag} is set to \texttt{true}.
+
+\subsection{Step 7: Secondary Conjunction Screening}
+
+\textbf{Critical safety check:} Does the avoidance maneuver put our satellite in the path of a DIFFERENT satellite?
+
+OrbitGuard screens the post-burn trajectory against ALL 16,000+ satellites in the catalog:
+\begin{enumerate}
+    \item Propagate the post-burn asset trajectory for 2 hours using two-body dynamics at 60-second steps
+    \item Compute perigee/apogee envelope of post-burn trajectory for quick filtering
+    \item For each candidate that passes the envelope filter, check the minimum distance
+    \item If any object comes within 50 km, generate a warning
+\end{enumerate}
+
+\begin{questionbox}
+``What happens when $\boldsymbol{\Phi}_{rv}$ is singular (not invertible)?''
+\end{questionbox}
+\begin{answerbox}
+$\boldsymbol{\Phi}_{rv}$ becomes singular when $\sin(nt) = 0$, i.e., the time to TCA is an exact integer multiple of the orbital period. At these points, the CW model predicts zero sensitivity of future position to current velocity (physically impossible for finite burns). The code checks for this:
+\begin{lstlisting}[language=Python]
+if abs(det_rv) < 1e-12 or cond_rv > 1e10:
+    raise ValueError("Singular CW matrix...")
+\end{lstlisting}
+In practice, this almost never happens because TCA rarely falls at exact orbital period multiples. The burn lead time (\texttt{burn\_lead\_s}) is clamped to $\min(\text{time to TCA}, 300\text{ seconds})$, which helps avoid these degeneracies.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 6: PILLAR 4 -- TRADE-OFF COMPARISON
+% ==============================================================
+\newpage
+\section{Pillar 4: Trade-off Comparison -- Which Dodge is Best?}
+
+\subsection{The Composite Scoring Formula}
+
+Each maneuver option is scored on three dimensions:
+
+\begin{formulabox}[title=Formula: Composite Trade-off Score]
+\[
+\text{Score} = \left(w_{\text{safety}} \cdot S_{\text{safety}} + w_{\text{fuel}} \cdot S_{\text{fuel}} + w_{\text{risk}} \cdot S_{\text{secondary}}\right) \times 100
+\]
+with weights: $w_{\text{safety}} = 0.40$, $w_{\text{fuel}} = 0.30$, $w_{\text{risk}} = 0.30$
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Safety Score]
+\[
+S_{\text{safety}} = \min\left(1.0,\; \frac{d_{\text{achieved}}}{50.0}\right)
+\]
+Normalized against a 50 km ``safe envelope.'' Achieving 50+ km separation gives a perfect safety score of 1.0.
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Fuel Efficiency Score]
+\[
+S_{\text{fuel}} = \frac{f_{\max} - f_{\text{this}}}{f_{\max} - f_{\min}}
+\]
+The cheapest option (minimum fuel) gets $S_{\text{fuel}} = 1.0$. The most expensive gets $S_{\text{fuel}} = 0.0$. This is a \textbf{relative} score -- it only compares among the three options, not against an absolute standard.
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Secondary Risk Score]
+\[
+S_{\text{secondary}} = \begin{cases}
+1.0 & \text{if no secondary conjunction detected} \\
+1.0 - \dfrac{d_{\text{original\_threat}}}{d_{\text{secondary}}} & \text{if secondary exists but $d_{\text{sec}} > d_{\text{original}}$} \\
+0.0 \text{ (DISQUALIFIED)} & \text{if $d_{\text{sec}} \leq d_{\text{original}}$}
+\end{cases}
+\]
+
+\textbf{Critical safety rule:} If a maneuver creates a secondary conjunction \textit{closer} than the original threat, the entire option is disqualified (Score = 0.0). It makes no sense to dodge one threat by flying into a worse one.
+\end{formulabox}
+
+\begin{realdatabox}[title=Worked Example: Comparing Three Options]
+Suppose original threat distance = 2.0 km. Three options:
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Option} & \textbf{$d_{\text{achieved}}$} & \textbf{Fuel (kg)} & \textbf{$S_{\text{safety}}$} & \textbf{$S_{\text{fuel}}$} & \textbf{$S_{\text{sec}}$} \\
+\midrule
+Small (2 km) & 9.5 km & 0.05 kg & 0.19 & 1.0 & 1.0 \\
+Medium (5 km) & 14.2 km & 0.12 kg & 0.284 & 0.53 & 1.0 \\
+Large (12 km) & 17.8 km & 0.20 kg & 0.356 & 0.0 & 1.0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+    \item Small: $\text{Score} = (0.40 \times 0.19 + 0.30 \times 1.0 + 0.30 \times 1.0) \times 100 = \mathbf{67.6}$
+    \item Medium: $\text{Score} = (0.40 \times 0.284 + 0.30 \times 0.53 + 0.30 \times 1.0) \times 100 = \mathbf{57.3}$
+    \item Large: $\text{Score} = (0.40 \times 0.356 + 0.30 \times 0.0 + 0.30 \times 1.0) \times 100 = \mathbf{44.2}$
+\end{itemize}
+\textbf{Recommendation:} Small Burn (67.6/100) -- the fuel savings outweigh the marginal safety gain of larger burns because all three options already provide adequate clearance.
+\end{realdatabox}
+
+\begin{questionbox}
+``Why is fuel weighted equal to secondary risk but less than safety?''
+\end{questionbox}
+\begin{answerbox}
+Fuel is the \textbf{finite life resource} of a satellite. Every gram of fuel used for avoidance is fuel that cannot be used for station-keeping (maintaining the correct orbit) or end-of-life disposal. Satellites like Starlink carry limited fuel -- using too much on a single avoidance maneuver can shorten mission lifetime by months or years.
+
+The weights (0.40/0.30/0.30) reflect this philosophy:
+\begin{itemize}
+    \item Safety is most important (0.40) -- the whole point is collision avoidance
+    \item Fuel and secondary risk are equally important (0.30 each) -- both affect long-term mission viability
+\end{itemize}
+These weights are configurable and would be tuned based on operator preferences in a production system.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 7: PILLAR 5 -- VISUALIZATION
+% ==============================================================
+\newpage
+\section{Pillar 5: Visualization -- Showing It on a Globe}
+
+\subsection{The Frame Conversion Problem}
+
+SGP4 outputs satellite positions in the \textbf{TEME (True Equator Mean Equinox)} coordinate frame. This is an \textit{inertial} frame fixed in space -- it does not rotate with the Earth. If we plotted TEME coordinates directly on a globe, satellites would appear to slide across continents as Earth rotates underneath them.
+
+We need to convert to \textbf{ECEF (Earth-Centered, Earth-Fixed)} -- a frame that rotates with the Earth, so a position above New York stays above New York.
+
+\subsection{The Rotation: TEME to ECEF}
+
+\begin{formulabox}[title=Formula: Greenwich Mean Sidereal Time (GMST)]
+First, compute how much Earth has rotated from a reference point. Using IAU 1982:
+\[
+T = \frac{JD - 2451545.0}{36525.0} \quad \text{(Julian centuries since J2000.0 epoch)}
+\]
+\[
+\text{GMST}_{\text{seconds}} = 24110.54841 + 8640184.812866 \cdot T + 0.093104 \cdot T^2 - 6.2 \times 10^{-6} \cdot T^3
+\]
+\[
+\theta_{\text{GMST}} = \left(\text{GMST}_{\text{seconds}} \times \frac{2\pi}{86400}\right) \mod 2\pi \quad \text{(convert to radians)}
+\]
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Position Rotation]
+\[
+\begin{bmatrix} x \\ y \\ z \end{bmatrix}_{\text{ECEF}} = \begin{bmatrix} \cos\theta & \sin\theta & 0 \\ -\sin\theta & \cos\theta & 0 \\ 0 & 0 & 1 \end{bmatrix} \begin{bmatrix} x \\ y \\ z \end{bmatrix}_{\text{TEME}}
+\]
+where $\theta = \theta_{\text{GMST}}$.
+
+\textbf{Physical meaning:} This is simply rotating the X-Y plane around the Z-axis (Earth's polar axis) by the angle the Earth has turned. The Z-axis is the same in both frames (points to the North Pole).
+\end{formulabox}
+
+\begin{formulabox}[title=Formula: Velocity Rotation (with Coriolis Term)]
+Velocity transformation requires an extra term because the ECEF frame is rotating:
+\[
+\vec{v}_{\text{ECEF}} = \mathbf{R}(\theta) \cdot \vec{v}_{\text{TEME}} - \vec{\omega}_{\oplus} \times \vec{r}_{\text{ECEF}}
+\]
+where $\vec{\omega}_{\oplus} = [0, 0, 7.2921151467 \times 10^{-5}]^T$ rad/s is Earth's rotation rate.
+
+The cross product term $\vec{\omega}_{\oplus} \times \vec{r}_{\text{ECEF}}$ accounts for the fact that any point fixed on Earth's surface has a velocity (due to Earth's rotation) that must be subtracted to get velocity relative to the ground.
+\end{formulabox}
+
+\begin{questionbox}
+``Why not just use latitude/longitude instead of ECEF?''
+\end{questionbox}
+\begin{answerbox}
+ECEF Cartesian coordinates $(x, y, z)$ are the natural output of the rotation and what 3D rendering engines (like Cesium/Three.js) consume directly. Converting to latitude/longitude adds an extra step and introduces singularities at the poles. The frontend can convert ECEF to lat/lon if needed for display:
+\[
+\text{lon} = \arctan2(y, x), \quad \text{lat} = \arctan2\left(z, \sqrt{x^2 + y^2}\right)
+\]
+\end{answerbox}
+
+% ==============================================================
+% SECTION 8: PILLAR 6 -- HUMAN APPROVAL
+% ==============================================================
+\newpage
+\section{Pillar 6: Human-in-the-Loop Approval}
+
+\subsection{Why Require Human Approval?}
+No matter how good the math is, \textbf{no automated system should fire a satellite's engine without a human confirming}. A wrong maneuver could:
+\begin{itemize}
+    \item Waste irreplaceable fuel
+    \item Put the satellite into a worse orbit
+    \item Create a collision with a different object
+    \item Violate coordination agreements with other operators
+\end{itemize}
+
+\subsection{Token-Based Authorization Flow}
+
+\begin{enumerate}
+    \item \textbf{Preview:} Operator reviews a specific maneuver option. System generates a UUID-based confirmation token with a 5-minute expiry.
+    \item \textbf{Approve:} Operator submits the token along with their ID and role. System validates:
+    \begin{itemize}
+        \item Token exists and has not expired
+        \item Token matches the correct candidate and option
+        \item Token is single-use (deleted after first lookup)
+        \item Operator role permits this action (role gating)
+    \end{itemize}
+    \item \textbf{Role Gating:} Junior operators cannot approve burns consuming $> 5.0$ kg of fuel. Senior operators can approve any burn.
+\end{enumerate}
+
+\begin{formulabox}[title=Token Generation (Simplified)]
+\[
+\text{Token} = \text{UUID4()} \quad \text{(cryptographically random 128-bit identifier)}
+\]
+\[
+\text{Expiry} = \text{UTC\_now()} + 5 \text{ minutes}
+\]
+The token, candidate\_id, option\_id, and expiry are stored in Supabase's \texttt{tokens} table. On access, the token row is immediately deleted (single-use).
+\end{formulabox}
+
+\begin{questionbox}
+``Why UUID tokens instead of HMAC-SHA256 as mentioned in the PROCESS document?''
+\end{questionbox}
+\begin{answerbox}
+The PROCESS.md document describes the \textit{conceptual} security model. In practice, the implementation uses UUID4 tokens stored server-side in Supabase because:
+\begin{itemize}
+    \item It is simpler and equally secure for this use case (tokens are short-lived and single-use)
+    \item Server-side storage allows immediate revocation
+    \item The security properties are equivalent: the token is unguessable (128-bit random), time-limited (5 minutes), and bound to a specific action (candidate + option)
+\end{itemize}
+An HMAC approach would be stateless (no database storage needed) but harder to revoke. Both are valid designs.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 9: PILLAR 7 -- AUDIT TRAIL
+% ==============================================================
+\newpage
+\section{Pillar 7: Audit Trail -- Tamper-Proof Record}
+
+\subsection{Why Hash Chaining?}
+Every action (triage refresh, explanation, maneuver generation, approval, rejection) is logged. But a simple database log could be edited by anyone with database access. Hash chaining makes tampering \textbf{detectable}.
+
+\begin{formulabox}[title=Formula: SHA-256 Hash Chain]
+Each audit entry's hash is computed as:
+\[
+\text{Hash}_n = \text{SHA256}\left(\text{prev\_hash} \,|\, \text{timestamp} \,|\, \text{pillar} \,|\, \text{action} \,|\, \text{candidate\_id} \,|\, \text{actor} \,|\, \text{payload\_json}\right)
+\]
+where:
+\begin{itemize}
+    \item $\text{prev\_hash}$ = hash of the previous entry (for entry \#1, this is the genesis hash = 64 zeros)
+    \item All fields are concatenated with ``$|$'' delimiter
+    \item Payload is JSON-serialized with sorted keys for deterministic ordering
+\end{itemize}
+
+The chain property: $\text{Hash}_n$ depends on $\text{Hash}_{n-1}$, which depends on $\text{Hash}_{n-2}$, and so on. Changing any single past entry breaks all subsequent hashes.
+\end{formulabox}
+
+\subsection{Chain Verification}
+To verify integrity, the system:
+\begin{enumerate}
+    \item Reads all entries in sequential order
+    \item For each entry, checks that its stored \texttt{prev\_hash} matches the hash of the preceding entry
+    \item Recomputes the entry's hash from its fields and checks it matches the stored \texttt{entry\_hash}
+    \item If any check fails, returns \texttt{(False, broken\_at\_id)}
+\end{enumerate}
+
+\begin{questionbox}
+``This is like a blockchain? Is this a blockchain?''
+\end{questionbox}
+\begin{answerbox}
+It uses the same \textbf{hash chaining principle} as a blockchain, but it is NOT a blockchain. Key differences:
+\begin{itemize}
+    \item \textbf{No distributed consensus:} There is one authoritative server, not a peer-to-peer network
+    \item \textbf{No mining/proof-of-work:} Entries are appended instantly
+    \item \textbf{Centralized storage:} Supabase database, not distributed ledger
+\end{itemize}
+It is more accurately called a \textbf{hash chain} or \textbf{tamper-evident log}. The purpose is not trustless decentralization but rather \textbf{accountability} -- if someone edits the database directly, the broken hashes will reveal the tampering.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 10: COMPLETE END-TO-END WALKTHROUGH
+% ==============================================================
+\newpage
+\section{Complete End-to-End Walkthrough with Real Data}
+
+Let us trace a complete threat detection and resolution cycle using a real example.
+
+\subsection{Step 1: Data Loading}
+\begin{enumerate}
+    \item System checks if \texttt{data/tle\_cache\_active.json} exists and is less than 2 hours old
+    \item If fresh, use cache. If stale, fetch from CelesTrak:
+    \begin{lstlisting}[language={}]
+GET https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle
+    \end{lstlisting}
+    \item Parse the 3-line TLE format into JSON objects
+    \item Result: 16,073 satellite records loaded
+\end{enumerate}
+
+\subsection{Step 2: Triage Screening for ISS (NORAD 25544)}
+
+\begin{enumerate}
+    \item \textbf{Envelope filter:} ISS orbits at $\approx$411--419 km altitude ($r_p = 6789$ km, $r_a = 6797$ km). With 100 km buffer, only satellites with orbits passing through 6689--6897 km range pass through. This eliminates GPS satellites ($\approx$26,560 km), GEO satellites ($\approx$42,164 km), and many others.
+    
+    \item \textbf{Coarse screening (10-min steps):} For each surviving candidate, propagate both orbits using SGP4 over 48 hours at 288 points. Check if minimum distance $< 50$ km.
+    
+    \item \textbf{Fine screening (60-sec steps):} For candidates passing coarse screening, re-check at 2880 points. Find exact minimum distance and time.
+    
+    \item \textbf{Exclusions applied:}
+    \begin{itemize}
+        \item ISS modules excluded: ZARYA (25544 self), UNITY (25575), ZVEZDA (26400), DESTINY (26700), POISK (36086), NAUKA (49044), CREW DRAGON 12 (67796), PROGRESS-MS 33 (68319), PROGRESS-MS 34 (68837), CYGNUS NG-24 (68689)
+        \item Co-located objects (always within 0.5 km) excluded
+        \item Sub-50-meter approaches excluded (TLE artifacts)
+    \end{itemize}
+    
+    \item \textbf{Result:} 5 conjunction alerts for ISS, 58 total across all assets
+\end{enumerate}
+
+\subsection{Step 3: Risk Scoring}
+For each alert, compute:
+\[
+\text{Score} = (F_d \times 0.70 + F_t \times 0.30) \times 100 \times P_{\text{mission}}
+\]
+Alerts are sorted by risk score descending. The highest-risk alert gets attention first.
+
+\subsection{Step 4: Maneuver Generation}
+For the top alert (say candidate 69652 at $d_{\min} = 3.2$ km, TCA in 8 hours):
+\begin{enumerate}
+    \item Compute Hill frame state at burn time ($t_{\text{burn}} = $ TCA $- 300$ s)
+    \item Get SGP4-based true unperturbed separation at TCA
+    \item Solve CW targeting for $\Delta d =$ [2.0, 5.0, 12.0] km
+    \item Compute delta-V and fuel for each
+    \item Cross-validate with nonlinear Kepler propagation
+    \item Screen for secondary conjunctions against all 16,073 satellites
+\end{enumerate}
+
+\subsection{Step 5: Trade-off Ranking}
+Score each option using: $\text{Score} = (0.40 \cdot S_{\text{safety}} + 0.30 \cdot S_{\text{fuel}} + 0.30 \cdot S_{\text{secondary}}) \times 100$
+
+Recommend the highest-scoring non-disqualified option.
+
+\subsection{Step 6: Visualization}
+Generate trajectory data:
+\begin{itemize}
+    \item Protected asset path: 48 hours of ECEF coordinates at 60-second intervals
+    \item Candidate path: same
+    \item Maneuver path: pre-burn follows nominal, post-burn follows CW-deviated trajectory
+    \item Danger zone: ECEF center point at TCA with safety radius
+\end{itemize}
+
+\subsection{Step 7: Approval}
+Operator reviews on the 3D globe, clicks ``Approve'' on the recommended option. System:
+\begin{enumerate}
+    \item Generates UUID token (5-minute expiry)
+    \item Operator confirms with token
+    \item Token validated, deleted (single-use)
+    \item Role gating checked (junior: $\leq$ 5 kg fuel only)
+    \item Approval recorded in database
+\end{enumerate}
+
+\subsection{Step 8: Audit Trail}
+Every step above generates an audit entry. The chain:
+\begin{lstlisting}[language={}]
+Entry 1: triage_refresh  -> Hash_1 = SHA256("0000...00|timestamp|1|triage_refresh|...|payload")
+Entry 2: explain_alert   -> Hash_2 = SHA256("Hash_1|timestamp|2|explain|...|payload")
+Entry 3: maneuver_gen    -> Hash_3 = SHA256("Hash_2|timestamp|3|maneuver|...|payload")
+Entry 4: tradeoff_rank   -> Hash_4 = SHA256("Hash_3|timestamp|4|compare|...|payload")
+Entry 5: approval        -> Hash_5 = SHA256("Hash_4|timestamp|6|approve|...|payload")
+\end{lstlisting}
+
+% ==============================================================
+% SECTION 11: COUNTER QUESTIONS & ANSWERS
+% ==============================================================
+\newpage
+\section{Common Counter Questions and How to Answer Them}
+
+\begin{questionbox}
+``How do you know your position calculations are correct?''
+\end{questionbox}
+\begin{answerbox}
+We use \textbf{SGP4}, which is the \textit{universally accepted standard} for TLE-based orbit propagation. It was developed by the US Air Force and is the same algorithm used by every satellite tracking system in the world. Our Python implementation comes from the \texttt{python-sgp4} library maintained by Brandon Rhodes, which is validated against the official US government test cases.
+\end{answerbox}
+
+\begin{questionbox}
+``What if there is a false positive -- your system says there is a threat but there is no real danger?''
+\end{questionbox}
+\begin{answerbox}
+False positives are expected and acceptable in a screening tool. The philosophy is: it is better to warn about a non-threat (waste 30 seconds reviewing it) than to miss a real threat (lose a \$500M satellite). Real operators receive many false alarms daily from certified systems too -- that is why the human-in-the-loop approval step (Pillar 6) exists. No maneuver is executed without human confirmation.
+\end{answerbox}
+
+\begin{questionbox}
+``What about atmospheric drag? Your formulas do not include drag.''
+\end{questionbox}
+\begin{answerbox}
+SGP4 \textit{does} account for atmospheric drag -- that is what the BSTAR parameter in the TLE encodes. The CW equations (used for maneuver targeting) do not include drag, but they only operate over short time spans ($\leq 300$ seconds before TCA), during which drag effects are negligible (drag changes velocity by $\sim 10^{-6}$ m/s over 5 minutes at ISS altitude).
+\end{answerbox}
+
+\begin{questionbox}
+``Can this handle GEO (geostationary) or deep space objects?''
+\end{questionbox}
+\begin{answerbox}
+The triage screening (SGP4 propagation) works for any orbit that has a TLE. The maneuver generation using CW equations is specifically validated for \textbf{LEO (Low Earth Orbit)}. CW equations assume a near-circular reference orbit and are most accurate for LEO. For GEO or highly elliptical orbits, different relative motion models (e.g., Tschauner-Hempel equations) would be more appropriate. This is listed as a known limitation.
+\end{answerbox}
+
+\begin{questionbox}
+``Why three maneuver options? Why not just calculate the optimal one?''
+\end{questionbox}
+\begin{answerbox}
+Because ``optimal'' depends on context that the system cannot fully capture:
+\begin{itemize}
+    \item An operator might know the satellite has very limited fuel remaining -- small burn is the only option
+    \item An operator might have coordination constraints with neighboring satellites
+    \item An operator might prefer a larger safety margin despite the fuel cost
+    \item The recommended option might have a CW divergence flag, making the operator prefer a different one
+\end{itemize}
+Providing options empowers the human operator to make an informed decision rather than blindly trusting an algorithm.
+\end{answerbox}
+
+\begin{questionbox}
+``What is the latency? Can this run in real time?''
+\end{questionbox}
+\begin{answerbox}
+From validation testing:
+\begin{itemize}
+    \item Triage (16,073 satellites): $\sim$5.69 seconds (cold) / $\sim$2.5 seconds (warm cache)
+    \item Risk explanation: $\sim$0.17 seconds
+    \item Maneuver generation: $\sim$0.3--1.0 seconds per candidate
+    \item Visualization: $\sim$1.0 seconds per candidate
+    \item Full end-to-end (explain $\to$ approve): $\sim$3.66 seconds
+\end{itemize}
+This is well within operational timeframes. Real conjunction assessments happen hours to days before TCA, so sub-10-second response times are excellent.
+\end{answerbox}
+
+\begin{questionbox}
+``What if both CelesTrak and Space-Track are down?''
+\end{questionbox}
+\begin{answerbox}
+The data fetch system has a three-level fallback:
+\begin{enumerate}
+    \item \textbf{CelesTrak} (primary live source)
+    \item \textbf{Space-Track} (fallback live source)
+    \item \textbf{Stale cache} (local JSON file on disk) -- even if both online sources fail, we serve the most recently cached data with a ``stale\_cache'' warning
+\end{enumerate}
+Only if all three fail (no cache file exists AND both sources are unreachable) does the system raise an error.
+\end{answerbox}
+
+% ==============================================================
+% SECTION 12: SUMMARY OF ALL FORMULAS
+% ==============================================================
+\newpage
+\section{Quick Reference: All Formulas in One Place}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.8}
+\begin{longtable}{p{3.5cm} p{9cm} p{2.5cm}}
+\toprule
+\textbf{What} & \textbf{Formula} & \textbf{Code File} \\
+\midrule
+\endhead
+Semi-major axis & $a = \left(\frac{\mu}{n^2}\right)^{1/3}$ & conjunction.py \\
+Perigee radius & $r_p = a(1-e)$ & conjunction.py \\
+Apogee radius & $r_a = a(1+e)$ & conjunction.py \\
+Mean motion & $n = \sqrt{\mu / a^3}$ & orbital\_mech.py \\
+3D distance & $d = \sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$ & conjunction.py \\
+Risk (distance) & $F_d = 1 - d_{\min}/d_{\text{thresh}}$ & risk\_score.py \\
+Risk (time) & $F_t = 1 - h/48$ & risk\_score.py \\
+Risk (final) & Score $= (0.7 F_d + 0.3 F_t) \times 100 \times P$ & risk\_score.py \\
+Hill frame & $\hat{e}_R = \vec{r}_p / \|\vec{r}_p\|$, etc. & orbital\_mech.py \\
+CW $\Phi_{rv}$ & $3 \times 3$ matrix with $\sin/\cos(nt)/n$ & orbital\_mech.py \\
+CW targeting & $\vec{v}_{\text{burn}} = \vec{v}_0 + \Phi_{rv}^{-1}(\Delta d \cdot \hat{u})$ & orbital\_mech.py \\
+Delta-V & $\Delta v = \|\vec{v}_{\text{burn}} - \vec{v}_0\| \times 1000$ & orbital\_mech.py \\
+Fuel mass & $\Delta m = m_0(1 - e^{-\Delta v / (I_{sp} g_0)})$ & orbital\_mech.py \\
+Trade-off & Score $= (0.4 S_{\text{safe}} + 0.3 S_{\text{fuel}} + 0.3 S_{\text{sec}}) \times 100$ & tradeoff.py \\
+GMST & IAU 1982 polynomial in Julian centuries & visualization.py \\
+TEME$\to$ECEF & $\vec{r}_{\text{ECEF}} = R_z(\theta_{\text{GMST}}) \cdot \vec{r}_{\text{TEME}}$ & visualization.py \\
+Audit hash & $H_n = \text{SHA256}(\text{prev} | \text{data}_n)$ & audit.py \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+% ==============================================================
+% SECTION 13: TECHNOLOGY STACK SUMMARY
+% ==============================================================
+\section{Technology Stack}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Component} & \textbf{Technology} \\
+\midrule
+Backend Framework & FastAPI (Python) \\
+Orbit Propagation & SGP4 (python-sgp4 library) \\
+Linear Algebra & NumPy \\
+Database & Supabase (PostgreSQL) \\
+AI/LLM Integration & Gemini 2.5 Flash (primary), Groq (fallback) \\
+Data Sources & CelesTrak, Space-Track \\
+API Server & Uvicorn (ASGI) \\
+Authentication & UUID4 tokens (server-side, single-use) \\
+Audit Security & SHA-256 hash chaining \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{1cm}
+\begin{center}
+\rule{0.5\textwidth}{0.5pt}\\[0.5cm]
+\textit{``OrbitGuard does not just tell you there is a problem.\\It tells you what to do, how much it costs, and records every decision forever.''}
+\end{center}
 
 \end{document}

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_URL } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "candidate_id is required" }, { status: 400 });
     }
 
-    let url = `http://127.0.0.1:8000/visualize/${candidateId}?window_hours=${windowHours}&step_seconds=${stepSeconds}`;
+    let url = `${BACKEND_API_URL}/visualize/${candidateId}?window_hours=${windowHours}&step_seconds=${stepSeconds}`;
     if (optionLabel) {
       url += `&option_label=${encodeURIComponent(optionLabel)}`;
     }

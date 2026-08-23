@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Search, Clock, Satellite as SatIcon, AlertTriangle, ScrollText, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/lib/ui-context";
 
@@ -182,7 +181,7 @@ export function Topbar() {
 
   return (
     <header className={cn(
-      "h-[56px] bg-obsidian/85 backdrop-blur-md border-b border-iron/25 flex items-center justify-between px-6 max-md:px-3 fixed top-0 right-0 z-20 select-none transition-all duration-300 ease-in-out",
+      "h-[56px] bg-[#101010]/85 backdrop-blur-md border-b border-[#212121] flex items-center justify-between px-6 max-md:px-3 fixed top-0 right-0 z-20 select-none transition-all duration-300 ease-in-out",
       sidebarMinimized ? "left-[64px]" : "left-[240px]",
       "max-md:left-0"
     )}>
@@ -190,16 +189,12 @@ export function Topbar() {
       <div className="flex items-center space-x-3">
         <button
           onClick={toggleSidebar}
-          className="p-1.5 rounded-[4px] border border-iron text-ash hover:text-bone hover:bg-iron/30 transition-colors focus:outline-none cursor-pointer flex items-center justify-center shrink-0"
+          className="px-2 py-1 rounded-[8px] border border-[#212121] text-[#9c9c9c] hover:text-[#f3f3f3] hover:bg-[#080808] transition-colors focus:outline-none cursor-pointer flex items-center justify-center shrink-0 font-mono text-[11px]"
           title={sidebarMinimized ? "Expand Sidebar" : "Minimize Sidebar"}
         >
-          {sidebarMinimized ? (
-            <ChevronRight className="h-3.5 w-3.5 text-orbit-cyan" />
-          ) : (
-            <ChevronLeft className="h-3.5 w-3.5 text-orbit-cyan" />
-          )}
+          {sidebarMinimized ? ">>" : "<<"}
         </button>
-        <h1 className="font-display text-[18px] font-light text-cloud tracking-tight leading-none">
+        <h1 className="font-sans text-[18px] font-normal text-[#f3f3f3] uppercase tracking-wider leading-none">
           {getPageTitle(pathname)}
         </h1>
       </div>
@@ -207,10 +202,6 @@ export function Topbar() {
       {/* Center Search Bar */}
       <div ref={searchRef} className="hidden md:flex items-center justify-center flex-1 max-w-md mx-8 relative">
         <div className="relative w-full">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-graphite"
-            strokeWidth={1.5}
-          />
           <input
             type="text"
             value={query}
@@ -223,16 +214,16 @@ export function Topbar() {
               if (query.trim() && flatItems.length > 0) setIsOpen(true);
             }}
             placeholder="Search satellites, threat IDs, events..."
-            className="w-full bg-abyss/60 border border-iron/30 rounded-[8px] pl-9 pr-4 py-1.5 font-body text-[12px] text-bone placeholder-fog focus:outline-none focus:border-pure transition-colors"
+            className="w-full bg-[#080808] border border-[#212121] rounded-[8px] pl-3 pr-4 py-1.5 font-mono text-[12px] text-[#f3f3f3] placeholder-[#9c9c9c]/55 focus:outline-none focus:border-[#f3f3f3] transition-colors"
           />
           {loading && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <span className="h-3 w-3 border-2 border-orbit-cyan border-t-transparent rounded-full animate-spin block" />
+              <span className="h-3 w-3 border-2 border-[#f3f3f3] border-t-transparent rounded-full animate-spin block" />
             </div>
           )}
           {!loading && !query && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <kbd className="font-data text-[9px] text-graphite bg-iron/40 border border-iron rounded-[3px] px-1.5 py-0.5 tracking-wider">
+              <kbd className="font-mono text-[9px] text-[#9c9c9c] bg-[#101010] border border-[#212121] rounded-[3px] px-1.5 py-0.5 tracking-wider">
                 ⌘K
               </kbd>
             </div>
@@ -241,14 +232,13 @@ export function Topbar() {
 
         {/* Dropdown Results List Panel */}
         {isOpen && flatItems.length > 0 && (
-          <div className="absolute top-full left-0 right-0 bg-graphite border border-iron/30 shadow-2xl rounded-[8px] mt-1.5 overflow-hidden z-50 max-h-[360px] overflow-y-auto divide-y divide-iron/20">
+          <div className="absolute top-full left-0 right-0 bg-[#080808] border border-[#212121] rounded-[8px] mt-1.5 overflow-hidden z-50 max-h-[360px] overflow-y-auto divide-y divide-[#212121]">
             
             {/* Category: Satellites */}
             {results.satellites.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-orbit-cyan font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
-                  <SatIcon className="h-3 w-3" strokeWidth={2} />
-                  <span>Fleet Assets</span>
+                <div className="text-[10px] text-[#9c9c9c] font-normal uppercase tracking-wider px-3.5 py-1.5 bg-[#101010] border-b border-[#212121] font-sans">
+                  Fleet Assets
                 </div>
                 {results.satellites.map((sat) => {
                   const flatIndex = flatItems.findIndex((item) => item.id === sat.id);
@@ -259,15 +249,15 @@ export function Topbar() {
                       onClick={() => handleItemClick(flatItems[flatIndex])}
                       className={cn(
                         "px-3.5 py-2.5 cursor-pointer flex flex-col transition-colors border-l-2 border-transparent",
-                        isFocused ? "bg-iron/50 border-orbit-cyan" : "hover:bg-iron/25"
+                        isFocused ? "bg-[#101010] border-[#ffffff]" : "hover:bg-[#101010]/50"
                       )}
                     >
-                      <span className="text-[12px] text-bone font-medium font-data">{sat.name}</span>
-                      <span className="text-[10px] text-ash truncate mt-0.5 font-body">
+                      <span className="text-[12px] text-[#f3f3f3] font-mono">{sat.name}</span>
+                      <span className="text-[10px] text-[#9c9c9c] truncate mt-0.5 font-mono">
                         Owner: {sat.owner} | NORAD: {sat.noradId} | Risk: <span className={cn({
-                          "text-cleared-green": sat.riskLevel === "green",
-                          "text-threat-amber": sat.riskLevel === "yellow",
-                          "text-collision-red": sat.riskLevel === "red",
+                          "text-[#98ff38]": sat.riskLevel === "green",
+                          "text-[#ffb829]": sat.riskLevel === "yellow",
+                          "text-[#ff3355]": sat.riskLevel === "red",
                         })}>{sat.riskLevel.toUpperCase()}</span>
                       </span>
                     </div>
@@ -279,9 +269,8 @@ export function Topbar() {
             {/* Category: Conjunction Events */}
             {results.events.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-threat-amber font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
-                  <AlertTriangle className="h-3 w-3" strokeWidth={2} />
-                  <span>Conjunction Events</span>
+                <div className="text-[10px] text-[#9c9c9c] font-normal uppercase tracking-wider px-3.5 py-1.5 bg-[#101010] border-b border-[#212121] font-sans">
+                  Conjunction Events
                 </div>
                 {results.events.map((event) => {
                   const flatIndex = flatItems.findIndex((item) => item.id === event.id);
@@ -292,11 +281,11 @@ export function Topbar() {
                       onClick={() => handleItemClick(flatItems[flatIndex])}
                       className={cn(
                         "px-3.5 py-2.5 cursor-pointer flex flex-col transition-colors border-l-2 border-transparent",
-                        isFocused ? "bg-iron/50 border-orbit-cyan" : "hover:bg-iron/25"
+                        isFocused ? "bg-[#101010] border-[#ffffff]" : "hover:bg-[#101010]/50"
                       )}
                     >
-                      <span className="text-[12px] text-bone font-medium font-data">{event.id}</span>
-                      <span className="text-[10px] text-ash truncate mt-0.5 font-body">
+                      <span className="text-[12px] text-[#f3f3f3] font-mono">{event.id}</span>
+                      <span className="text-[10px] text-[#9c9c9c] truncate mt-0.5 font-mono">
                         vs {event.secondaryName} | Prob: {event.pcDisplay}
                       </span>
                     </div>
@@ -308,9 +297,8 @@ export function Topbar() {
             {/* Category: Incident Logs */}
             {results.logs.length > 0 && (
               <div>
-                <div className="flex items-center space-x-1.5 text-[9px] text-ash font-bold uppercase tracking-wider px-3.5 py-1.5 bg-abyss/90 border-b border-iron/20">
-                  <ScrollText className="h-3 w-3" strokeWidth={2} />
-                  <span>Incident Log Entries</span>
+                <div className="text-[10px] text-[#9c9c9c] font-normal uppercase tracking-wider px-3.5 py-1.5 bg-[#101010] border-b border-[#212121] font-sans">
+                  Incident Log Entries
                 </div>
                 {results.logs.map((log) => {
                   const flatIndex = flatItems.findIndex((item) => item.id === log.id);
@@ -321,11 +309,11 @@ export function Topbar() {
                       onClick={() => handleItemClick(flatItems[flatIndex])}
                       className={cn(
                         "px-3.5 py-2.5 cursor-pointer flex flex-col transition-colors border-l-2 border-transparent",
-                        isFocused ? "bg-iron/50 border-orbit-cyan" : "hover:bg-iron/25"
+                        isFocused ? "bg-[#101010] border-[#ffffff]" : "hover:bg-[#101010]/50"
                       )}
                     >
-                      <span className="text-[12px] text-bone font-medium font-data">{log.id}: {log.action}</span>
-                      <span className="text-[10px] text-ash truncate mt-0.5 font-body">
+                      <span className="text-[12px] text-[#f3f3f3] font-mono">{log.id}: {log.action}</span>
+                      <span className="text-[10px] text-[#9c9c9c] truncate mt-0.5 font-mono">
                         {log.outcome}
                       </span>
                     </div>
@@ -337,7 +325,7 @@ export function Topbar() {
         )}
 
         {isOpen && flatItems.length === 0 && query.trim() && !loading && (
-          <div className="absolute top-full left-0 right-0 bg-void border border-iron shadow-2xl rounded-[4px] mt-1.5 p-4 text-center z-50 text-[11px] text-ash uppercase font-semibold">
+          <div className="absolute top-full left-0 right-0 bg-[#080808] border border-[#212121] rounded-[8px] mt-1.5 p-4 text-center z-50 text-[11px] text-[#9c9c9c] uppercase font-mono">
             No matching entries found
           </div>
         )}
@@ -363,38 +351,31 @@ export function Topbar() {
           }}
           disabled={syncing}
           className={cn(
-            "flex items-center space-x-2 bg-abyss/40 border border-iron/20 rounded-[8px] px-3 py-1 cursor-pointer hover:bg-steel/30 transition-all text-ash hover:text-orbit-cyan",
-            syncing && "opacity-75 cursor-not-allowed text-orbit-cyan"
+            "flex items-center space-x-2 bg-transparent border border-[#212121] rounded-[8px] px-3 py-1.5 cursor-pointer hover:bg-[#080808] transition-all text-[#9c9c9c] hover:text-[#f3f3f3]",
+            syncing && "opacity-75 cursor-not-allowed text-[#9c9c9c]"
           )}
           title="Sync live orbital data from CelesTrak"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} strokeWidth={1.5} />
-          <span className="font-data text-[11px] tracking-wider uppercase hidden lg:inline">
-            {syncing ? "Syncing..." : "CelesTrak Sync"}
+          <span className="font-mono text-[11px] tracking-wider uppercase">
+            {syncing ? "SYNCING..." : "SYNC"}
           </span>
         </button>
 
         {/* Live UTC Clock */}
-        <div className="flex items-center space-x-2 bg-abyss/40 border border-iron/20 rounded-[8px] px-3 py-1">
-          <Clock className="h-3.5 w-3.5 text-orbit-cyan" strokeWidth={1.5} />
-          <span className="font-data text-[12px] text-bone tracking-wider">
-            {utcTime || "LOADING UTC..."}
+        <div className="flex items-center space-x-2 bg-transparent border border-[#212121] rounded-[8px] px-3 py-1.5">
+          <span className="font-mono text-[12px] text-[#f3f3f3] tracking-wider">
+            UTC: {utcTime ? utcTime.replace(" UTC", "") : "LOADING..."}
           </span>
         </div>
 
-        {/* Notification Bell Badge */}
-        <button className="relative p-1.5 text-ash hover:text-bone hover:bg-steel/30 rounded-[8px] transition-all focus:outline-none cursor-pointer">
-          <Bell className="h-4 w-4" strokeWidth={1.5} />
-          {criticalCount > 0 && (
-            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-collision-red text-[9px] font-bold text-white leading-none">
-              {criticalCount}
-            </span>
-          )}
+        {/* Notification Bell Badge replacement */}
+        <button className="px-3 py-1.5 text-[#9c9c9c] hover:text-[#f3f3f3] hover:bg-[#080808] rounded-[8px] transition-all focus:outline-none cursor-pointer border border-[#212121] bg-transparent font-mono text-[11px] uppercase tracking-wider shrink-0">
+          ALERTS ({criticalCount})
         </button>
 
         {/* User Avatar Circle */}
         <div className="flex items-center space-x-2.5">
-          <div className="h-7 w-7 rounded-full bg-orbit-cyan/15 border border-orbit-cyan/40 flex items-center justify-center font-display text-[11px] font-bold text-orbit-cyan">
+          <div className="h-7 w-7 rounded-full bg-transparent border border-[#212121] flex items-center justify-center font-mono text-[11px] text-[#f3f3f3] uppercase">
             OP
           </div>
         </div>

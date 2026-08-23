@@ -307,7 +307,7 @@ def screen_secondary_conjunctions(
     protected_id: str,
     candidate_id: str,
     all_satellites: List[Dict],
-    threshold_km: float = 50.0,
+    threshold_km: float = 5.0,
     duration_hours: float = 2.0,
     step_seconds: float = 60.0
 ) -> str | None:
@@ -403,7 +403,7 @@ def generate_maneuver_options(
             f"Insufficient lead time to TCA ({total_time_to_tca_s:.1f}s). Maneuver execution requires at least 60 seconds."
         )
         
-    burn_lead_s = min(total_time_to_tca_s, 300.0)
+    burn_lead_s = min(total_time_to_tca_s / 2.0, 14400.0)
     t_burn = tca - timedelta(seconds=burn_lead_s)
         
     # 1. Obtain relative state in Hill frame at burn time
@@ -492,7 +492,7 @@ def generate_maneuver_options(
                 protected_id=alert.protected_asset_id,
                 candidate_id=alert.candidate_id,
                 all_satellites=all_satellites,
-                threshold_km=50.0
+                threshold_km=5.0
             )
             
         options_raw.append({

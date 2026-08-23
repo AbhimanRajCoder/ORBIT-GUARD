@@ -73,7 +73,7 @@ export function StreamProvider({ children }: { children: React.ReactNode }) {
 
           // Trigger toast alert banner
           addToast(
-            `⚠ New conjunction event detected: ${updatedSat.name} + ${conjEvent.secondaryName}`,
+            `New conjunction event detected: ${updatedSat.name} + ${conjEvent.secondaryName}`,
             "warning"
           );
         } else if (type === "conjunction_update") {
@@ -81,7 +81,7 @@ export function StreamProvider({ children }: { children: React.ReactNode }) {
           setConjunctionEvents((prev) =>
             prev.map((e) => (e.id === updatedEvent.id ? { ...e, ...updatedEvent } : e))
           );
-          addToast(`🔄 Alert status updated for ${updatedEvent.secondaryName}`, "info");
+          addToast(`Alert status updated for ${updatedEvent.secondaryName}`, "info");
         } else if (type === "status_update") {
           setLastUpdated(payload.lastDataUpdate || new Date().toISOString());
         }

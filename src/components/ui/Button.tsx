@@ -7,22 +7,22 @@ export interface ButtonProps
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", children, disabled, ...props }, ref) => {
+  ({ className, variant = "ghost", children, disabled, ...props }, ref) => {
     return (
       <button
         ref={ref}
         disabled={disabled}
         className={cn(
-          "inline-flex items-center justify-center font-display text-[12px] tracking-[0.10em] font-bold uppercase rounded-[4px] px-5 py-2.5 transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-bone disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer",
+          "inline-flex items-center justify-center transition-all duration-200 focus:outline-none disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer text-body-primary font-normal",
           {
-            // Primary Button: 1px Star White border, transparent fill, white text, inverts on hover
-            "bg-transparent border border-bone text-bone hover:bg-bone hover:text-void":
+            // Primary Button: filled white pill (9999px radius), text color canvas (#101010)
+            "bg-[#ffffff] text-[#101010] rounded-[9999px] px-6 py-2.5 hover:bg-[#ffffff]/90 border border-transparent":
               variant === "primary",
-            // Ghost Button: 1px border, transparent fill, muted text, shifts to white
-            "bg-transparent border border-iron text-ash hover:bg-bone hover:text-void hover:border-bone":
+            // Ghost outline: transparent fill, 1px white border, 8px radius
+            "bg-transparent border border-[#ffffff] text-[#ffffff] rounded-[8px] px-5 py-2.5 hover:bg-[#ffffff]/10":
               variant === "ghost",
-            // Destructive Button: 1px Collision Red border, transparent fill, red text
-            "bg-transparent border border-collision-red text-collision-red hover:bg-collision-red hover:text-white":
+            // Destructive: ghost outline with red border, 8px radius
+            "bg-transparent border border-[#ff3355] text-[#ff3355] rounded-[8px] px-5 py-2.5 hover:bg-[#ff3355]/10":
               variant === "destructive",
           },
           className

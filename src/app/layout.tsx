@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Playfair_Display, Roboto_Mono, Inter } from "next/font/google";
+import { Barlow, Roboto_Mono } from "next/font/google";
 import { Topbar } from "@/components/dashboard/Topbar";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { AlertBanner } from "@/components/dashboard/AlertBanner";
@@ -8,11 +8,10 @@ import { ToastContainer } from "@/components/ui/Toast";
 import { StreamProvider } from "@/lib/hooks/useOrbitStream";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const barlowDisplay = Barlow({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"]
+  weight: ["400", "700"],
 });
 
 const robotoMono = Roboto_Mono({
@@ -21,10 +20,10 @@ const robotoMono = Roboto_Mono({
   weight: ["400", "500"],
 });
 
-const inter = Inter({
+const barlowBody = Barlow({
   variable: "--font-body",
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -77,7 +76,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${playfair.variable} ${robotoMono.variable} ${inter.variable} h-full antialiased`}
+      className={`${barlowDisplay.variable} ${robotoMono.variable} ${barlowBody.variable} h-full antialiased`}
     >
       <body className="min-h-full bg-void text-bone font-body flex">
         <ToastProvider>

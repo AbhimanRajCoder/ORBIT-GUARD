@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BACKEND_API_URL } from "@/lib/config";
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const optionId = `mnv_${candidateId}_${index}`;
 
     // 1. Query FastAPI preview endpoint to get confirmation token
-    const previewUrl = `http://127.0.0.1:8000/approve/${candidateId}/preview?option_id=${optionId}`;
+    const previewUrl = `${BACKEND_API_URL}/approve/${candidateId}/preview?option_id=${optionId}`;
     const previewRes = await fetch(previewUrl, { cache: "no-store" });
     if (!previewRes.ok) {
       const errDetail = await previewRes.text();
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     const token = previewData.confirmation_token;
 
     // 2. Authorize maneuver on FastAPI backend
-    const authorizeRes = await fetch("http://127.0.0.1:8000/approve", {
+    const authorizeRes = await fetch(`${BACKEND_API_URL}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     // 3. Query option details and alert details from backend to map fields accurately
     let backendOptions: any[] = [];
     try {
-      const res = await fetch(`http://127.0.0.1:8000/maneuver/${candidateId}/options`, { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/maneuver/${candidateId}/options`, { cache: "no-store" });
       if (res.ok) {
         backendOptions = await res.json();
       }
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     let backendAlerts: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
       if (res.ok) {
         backendAlerts = await res.json();
       }

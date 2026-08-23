@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AIBriefing } from "@/types";
+import { BACKEND_API_URL } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     // 1. Fetch LLM explanation from FastAPI
     let explanationText = "";
     try {
-      const explainRes = await fetch(`http://127.0.0.1:8000/explain/${candidateId}`, { cache: "no-store" });
+      const explainRes = await fetch(`${BACKEND_API_URL}/explain/${candidateId}`, { cache: "no-store" });
       if (explainRes.ok) {
         const explainData = await explainRes.json();
         explanationText = explainData.explanation || "";
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     // 2. Fetch alert info
     let backendAlerts: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
       if (res.ok) {
         backendAlerts = await res.json();
       }

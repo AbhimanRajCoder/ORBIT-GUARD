@@ -2,31 +2,17 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  Satellite as SatelliteIcon,
-  Radio,
-  Zap,
-  ShieldAlert,
-  ChevronRight,
-  X,
-  Activity,
-  Globe,
-} from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card, CardTitle, CardDescription } from "@/components/ui/Card";
-import { StatusDot } from "@/components/ui/StatusDot";
 import { cn } from "@/lib/utils";
 import { Satellite, ConjunctionEvent } from "@/types";
 import { useOrbitStream } from "@/lib/hooks/useOrbitStream";
 import dynamic from "next/dynamic";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card, CardDescription } from "@/components/ui/Card";
+import { StatusDot } from "@/components/ui/StatusDot";
+import { InfoTooltip } from "@/components/ui/InfoTooltip";
 
 import { MapLoadingPlaceholder } from "@/components/dashboard/MapLoadingPlaceholder";
-
-const EarthView = dynamic(() => import("@/components/EarthView"), {
-  ssr: false,
-  loading: () => <MapLoadingPlaceholder />
-});
 
 export default function DashboardPage() {
   const { satellites, conjunctionEvents: conjunctions } = useOrbitStream();
@@ -155,105 +141,97 @@ export default function DashboardPage() {
 
   // 3. MAIN DASHBOARD CONTENT
   return (
-    <div className="space-y-8 select-none relative">
+    <div className="space-y-8 select-none relative animate-fade-in">
+      {/* Page Title display headline */}
+      <div className="pt-2">
+        <h1 className="text-display uppercase">Mission Overview</h1>
+        <p className="text-body-secondary mt-2">Real-time space traffic coordination and conjunction screening.</p>
+      </div>
+
+      <hr className="hairline-divider" />
+
       {/* SECTION 1 — Stats Bar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Satellites */}
-        <Card className="flex items-center space-x-4 p-4">
-          <div className="p-2.5 rounded-full bg-orbit-cyan/10 border border-orbit-cyan/30 text-orbit-cyan">
-            <SatelliteIcon className="h-5 w-5" strokeWidth={1.5} />
-          </div>
+        <Card className="p-8">
           <div>
-            <span className="font-data text-[24px] font-bold text-bone leading-none block">
+            <span className="text-mono-numeric text-[24px] text-[#f3f3f3] leading-none block font-normal">
               {satellites.length}
             </span>
-            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
+            <span className="text-meta mt-2 block uppercase text-[11px] tracking-wider text-[#9c9c9c]">
               Total Satellites Tracked
             </span>
           </div>
         </Card>
 
         {/* Card 2: Active Conjunctions */}
-        <Card className="flex items-center space-x-4 p-4">
-          <div className={cn("p-2.5 rounded-full border", {
-            "bg-collision-red/10 border-collision-red/30 text-collision-red": activeConjunctions.length > 0,
-            "bg-iron border-graphite text-ash": activeConjunctions.length === 0
-          })}>
-            <Radio className="h-5 w-5" strokeWidth={1.5} />
-          </div>
+        <Card className="p-8">
           <div>
-            <span className={cn("font-data text-[24px] font-bold leading-none block", {
-              "text-collision-red": activeConjunctions.length > 0,
-              "text-bone": activeConjunctions.length === 0,
+            <span className={cn("text-mono-numeric text-[24px] leading-none block font-normal", {
+              "text-[#ff3355]": activeConjunctions.length > 0,
+              "text-[#f3f3f3]": activeConjunctions.length === 0,
             })}>
               {activeConjunctions.length}
             </span>
-            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
-              Active Conjunction Events
+            <span className="text-meta mt-2 block uppercase text-[11px] tracking-wider text-[#9c9c9c]">
+              <InfoTooltip term="Active Conjunctions" explanation="Conjunctions are events where two space objects (like satellites or debris) are predicted to pass very close to each other." />
             </span>
           </div>
         </Card>
 
         {/* Card 3: Critical Alerts */}
-        <Card className="flex items-center space-x-4 p-4">
-          <div className={cn("p-2.5 rounded-full border", {
-            "bg-collision-red/15 border-collision-red/40 text-collision-red animate-pulse": criticalConjunctions.length > 0,
-            "bg-iron border-graphite text-ash": criticalConjunctions.length === 0
-          })}>
-            <ShieldAlert className="h-5 w-5" strokeWidth={1.5} />
-          </div>
+        <Card className="p-8">
           <div>
-            <span className={cn("font-data text-[24px] font-bold leading-none block", {
-              "text-collision-red": criticalConjunctions.length > 0,
-              "text-bone": criticalConjunctions.length === 0,
+            <span className={cn("text-mono-numeric text-[24px] leading-none block font-normal", {
+              "text-[#ff3355]": criticalConjunctions.length > 0,
+              "text-[#f3f3f3]": criticalConjunctions.length === 0,
             })}>
               {criticalConjunctions.length}
             </span>
-            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
-              Critical Alerts Active
+            <span className="text-meta mt-2 block uppercase text-[11px] tracking-wider text-[#9c9c9c]">
+              <InfoTooltip term="Critical Alerts Active" explanation="High-risk conjunctions where the probability of collision is extremely elevated and immediate action is recommended." />
             </span>
           </div>
         </Card>
 
         {/* Card 4: Conjunction Events (72h) */}
-        <Card className="flex items-center space-x-4 p-4">
-          <div className="p-2.5 rounded-full bg-cleared-green/10 border border-cleared-green/30 text-cleared-green">
-            <Zap className="h-5 w-5" strokeWidth={1.5} />
-          </div>
+        <Card className="p-8">
           <div>
-            <span className="font-data text-[24px] font-bold text-cleared-green leading-none block">
+            <span className="text-mono-numeric text-[24px] text-[#98ff38] leading-none block font-normal">
               {conjunctions.length}
             </span>
-            <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] mt-0.5 block">
-              Conjunction Events (72h)
+            <span className="text-meta mt-2 block uppercase text-[11px] tracking-wider text-[#9c9c9c]">
+              Events Screener (72h)
             </span>
           </div>
         </Card>
       </div>
 
+      <hr className="hairline-divider" />
+
       {/* SECTION 2 — Split-Screen Dashboard Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-[600px]">
-        {/* Left Panel (40%) — Active Threats & Fleet Status */}
-        <div className="lg:col-span-2 flex flex-col space-y-4 overflow-y-auto pr-1 h-full scrollbar-thin">
+        {/* Left Panel (60%) — Active Hazards */}
+        <div className="lg:col-span-3 flex flex-col space-y-4 overflow-y-auto pr-1 h-full scrollbar-thin">
           {/* Active Threats */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
-                Active Hazard Conjunctions
+            <div className="flex items-center justify-between border-b border-[#212121] pb-2">
+              <h2 className="text-meta">
+                <InfoTooltip term="Active Hazard Conjunctions" explanation="Ongoing close approach events between satellites and other objects that present a potential risk." />
               </h2>
-              <span className="font-data text-[10px] text-graphite">
-                THREATS ACTIVE: {activeConjunctions.length}
+              <span className="text-mono-numeric text-[11px] text-[#9c9c9c]">
+                ACTIVE: {activeConjunctions.length}
               </span>
             </div>
 
             <div className="space-y-4">
               {activeConjunctions.length === 0 ? (
-                <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
+                <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed border-[#212121]">
                   <StatusDot status="cleared" ping={false} className="mb-2" />
-                  <span className="font-data text-[11px] font-semibold text-ash uppercase tracking-[0.182em]">
+                  <span className="text-meta text-[#9c9c9c]">
                     No Active Hazards
                   </span>
-                  <span className="font-body text-[11px] text-graphite mt-1 max-w-xs">
+                  <span className="text-body-secondary text-[14px] mt-1 max-w-xs block">
                     All orbital segments within monitored grids report clearance.
                   </span>
                 </Card>
@@ -266,10 +244,9 @@ export default function DashboardPage() {
                   return (
                     <Card
                       key={conj.id}
-                      accentStatus={isCritical ? "critical" : "caution"}
-                      className={cn("flex flex-col p-4 space-y-3 animate-slide-in cursor-pointer transition-all border", {
-                        "border-orbit-cyan/60 bg-graphite/40 shadow-[0_0_10px_rgba(0,186,226,0.15)]": isSelected,
-                        "border-transparent": !isSelected,
+                      className={cn("flex flex-col p-6 space-y-4 cursor-pointer transition-all border", {
+                        "border-[#ffffff] bg-[#080808]": isSelected,
+                        "border-[#212121] bg-transparent": !isSelected,
                       })}
                       onClick={() => {
                         setSelectedConjunctionId(conj.id);
@@ -279,48 +256,48 @@ export default function DashboardPage() {
                       }}
                     >
                       {/* Event Header details */}
-                      <div className="flex items-start justify-between border-b border-iron pb-2">
+                      <div className="flex items-start justify-between border-b border-[#212121] pb-3">
                         <div>
-                          <span className="font-data text-[10px] text-graphite">ALERT ID: {conj.id}</span>
-                          <h3 className="font-data text-[13px] font-bold text-bone uppercase mt-0.5">
+                          <span className="text-mono-numeric text-[11px] text-[#9c9c9c] block">EVENT ID: {conj.id}</span>
+                          <h3 className="text-body-primary text-[15px] uppercase mt-1">
                             {satellite?.name} vs {conj.secondaryName}
                           </h3>
                         </div>
                         <Badge variant={isCritical ? "critical" : "caution"}>
-                          {conj.riskLevel}
+                          {conj.riskLevel === "red" ? "RED ALERT" : "YELLOW ALERT"}
                         </Badge>
                       </div>
 
                       {/* TCA and metrics info */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
-                             TCA Countdown
+                           <span className="text-meta block text-[#9c9c9c]">
+                             <InfoTooltip term="TCA Countdown" explanation="Time of Closest Approach. The countdown to the exact moment when the two objects will be nearest to each other." />
                            </span>
-                          <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
+                          <span className="text-mono-numeric text-[14px] text-[#f3f3f3] block mt-1" suppressHydrationWarning>
                             {getTimeRemaining(conj.tca)}
                           </span>
                         </div>
                         <div>
-                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
-                             Miss Distance
+                           <span className="text-meta block text-[#9c9c9c]">
+                             <InfoTooltip term="Miss Distance" explanation="The minimum physical distance predicted between the two objects at their closest point." />
                            </span>
-                          <span className="font-data text-[13px] text-bone block mt-0.5" suppressHydrationWarning>
+                          <span className="text-mono-numeric text-[14px] text-[#f3f3f3] block mt-1" suppressHydrationWarning>
                             {conj.missDistanceMeters.toLocaleString()} m
                           </span>
                         </div>
                         <div className="col-span-2">
-                           <span className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
-                             Collision Probability
+                           <span className="text-meta block text-[#9c9c9c]">
+                             <InfoTooltip term="Collision Probability" explanation="The mathematical chance (expressed as a percentage) that the two objects will collide during the close approach." />
                            </span>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <div className="flex-1 h-2 bg-void border border-iron rounded-full overflow-hidden">
+                          <div className="flex items-center space-x-3 mt-2">
+                            <div className="flex-1 h-1.5 bg-[#101010] border border-[#212121] rounded-full overflow-hidden">
                               <div
-                                className={cn("h-full", isCritical ? "bg-collision-red" : "bg-threat-amber")}
+                                className={cn("h-full", isCritical ? "bg-[#ff3355]" : "bg-[#ffb829]")}
                                 style={{ width: `${Math.min(conj.pc * 1000, 100)}%` }}
                               />
                             </div>
-                            <span className={cn("font-data text-[13px] font-bold shrink-0", isCritical ? "text-collision-red" : "text-threat-amber")}>
+                            <span className={cn("text-mono-numeric text-[13px] shrink-0", isCritical ? "text-[#ff3355]" : "text-[#ffb829]")}>
                               {formatPercentage(conj.pc)}
                             </span>
                           </div>
@@ -328,9 +305,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex space-x-2 pt-2 border-t border-iron/50">
+                      <div className="flex space-x-2 pt-3 border-t border-[#212121]">
                         <Link href={`/maneuvers?event=${conj.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="primary" className="w-full py-1.5 px-3">
+                          <Button variant="primary" className="w-full py-2">
                             Plan Maneuver
                           </Button>
                         </Link>
@@ -340,7 +317,7 @@ export default function DashboardPage() {
                             e.stopPropagation();
                             handleDismissConjunction(conj.id);
                           }}
-                          className="py-1.5 px-3"
+                          className="py-2 px-4"
                         >
                           Dismiss
                         </Button>
@@ -351,29 +328,27 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+        </div> {/* Closes Column 1 (Active Hazards) */}
 
-          {/* Fleet Status Telemetry */}
-          <div className="space-y-4 pt-4 border-t border-white/5">
-            <div className="flex items-center justify-between">
-               <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
-                 Fleet Status Telemetry
+        {/* Right Panel (40%) — Fleet Status Telemetry */}
+        <div className="lg:col-span-2 flex flex-col space-y-4 overflow-y-auto pr-1 h-full scrollbar-thin border-l border-[#212121] pl-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-[#212121] pb-2">
+               <h2 className="text-meta">
+                 <InfoTooltip term="Fleet Status Telemetry" explanation="Real-time measurements and operational data transmitted from active satellites." />
                </h2>
             </div>
 
-            <div className="border border-iron/30 rounded-[16px] bg-graphite divide-y divide-iron/20 overflow-hidden">
+            <div className="border border-[#212121] rounded-[8px] bg-transparent divide-y divide-[#212121] overflow-hidden">
               {satellites.map((sat) => {
-                const relativeConj = activeConjunctions.find(
-                  (c) => c.primaryId === sat.id
-                );
-
                 return (
                   <div
                     key={sat.id}
                     onClick={() => setSelectedSatellite(sat)}
-                    className="p-4 flex flex-col hover:bg-iron/20 transition-all cursor-pointer group"
+                    className="p-4 flex flex-col hover:bg-[#080808] transition-all cursor-pointer group"
                   >
                     <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3.5 flex-1 min-w-0">
+                      <div className="flex items-start space-x-3 flex-1 min-w-0">
                         <StatusDot
                           status={
                             sat.riskLevel === "red"
@@ -387,27 +362,27 @@ export default function DashboardPage() {
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center space-x-2">
-                            <span className="font-data text-[14px] font-bold text-bone truncate group-hover:text-orbit-cyan transition-colors">
+                            <span className="text-mono-numeric text-[13px] text-[#f3f3f3] truncate group-hover:text-[#ffffff] transition-colors">
                               {sat.name}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <Badge variant="monitoring" className="h-5 shrink-0 uppercase">
+                      <Badge variant={sat.riskLevel === "red" ? "critical" : sat.riskLevel === "yellow" ? "caution" : "cleared"} className="h-5 shrink-0 uppercase text-[10px]">
                         {sat.objectType}
                       </Badge>
                     </div>
 
                     <div className="flex justify-between items-center mt-3 gap-4">
-                      <div className="flex items-center space-x-3 text-[11px] text-ash font-data">
-                        <span>ALT: {sat.altitude != null ? `${sat.altitude.toFixed(0)}km` : "N/A"}</span>
-                        <span className="text-graphite">|</span>
-                        <span>INC: {sat.inclination != null ? `${sat.inclination.toFixed(1)}°` : "N/A"}</span>
+                      <div className="flex items-center space-x-3 text-[11px] text-[#9c9c9c] text-mono-numeric">
+                        <span><InfoTooltip term="ALT" explanation="Altitude. The height of the satellite above the Earth's surface." />: {sat.altitude != null ? `${sat.altitude.toFixed(0)}km` : "N/A"}</span>
+                        <span className="text-[#212121]">|</span>
+                        <span><InfoTooltip term="INC" explanation="Inclination. The tilt angle of the satellite's orbit relative to the Earth's equator." />: {sat.inclination != null ? `${sat.inclination.toFixed(1)}°` : "N/A"}</span>
                       </div>
 
                       <div className="flex items-center space-x-2 w-[100px]">
-                        <span className="font-data text-[10px] text-ash">FUEL {sat.fuelRemainingPct != null ? `${sat.fuelRemainingPct.toFixed(0)}%` : "N/A"}</span>
-                        <div className="flex-1 h-1 bg-void border border-iron rounded-full overflow-hidden">
+                        <span className="text-mono-numeric text-[10px] text-[#9c9c9c]">FUEL {sat.fuelRemainingPct != null ? `${sat.fuelRemainingPct.toFixed(0)}%` : "N/A"}</span>
+                        <div className="flex-1 h-1 bg-[#101010] border border-[#212121] rounded-full overflow-hidden">
                           <div
                             className={cn("h-full transition-all duration-300", sat.fuelRemainingPct != null ? getFuelColorClass(sat.fuelRemainingPct) : "")}
                             style={{ width: `${sat.fuelRemainingPct ?? 0}%` }}
@@ -420,77 +395,69 @@ export default function DashboardPage() {
               })}
             </div>
           </div>
-        </div>
-
-        {/* Right Panel (60%) — 3D Earth Visualizer */}
-        <div className="lg:col-span-3 h-full relative overflow-hidden bg-graphite border border-iron/30 rounded-[16px]">
-          <EarthView selectedObject={liveSelectedSatellite?.id || null} compact={true} />
-        </div>
+        </div> {/* Closes Column 2 (Fleet Status Telemetry) */}
       </div>
+
+      <hr className="hairline-divider" />
 
       {/* SECTION 3 — Quick Actions */}
       <section className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <Activity className="h-4 w-4 text-ash" />
-          <h2 className="font-data text-[11px] text-ash uppercase tracking-[0.182em]">
-            Quick Actions
+        <div className="flex items-center space-x-2 pb-2 border-b border-[#212121]">
+          <h2 className="text-meta">
+            Operational Interfaces
           </h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Link href="/conjunctions">
-            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 rounded-full bg-collision-red/10 border border-collision-red/30 text-collision-red group-hover:bg-collision-red/20 transition-colors">
-                  <Radio className="h-4 w-4" strokeWidth={1.5} />
+            <Card className="hover:border-[#f3f3f3] hover:bg-[#080808]/50 transition-all group cursor-pointer h-full flex flex-col justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <h3 className="text-body-primary text-[18px]">Conjunctions</h3>
                 </div>
-                <CardTitle>Conjunction Dashboard</CardTitle>
+                <CardDescription>
+                  View all active conjunction threats sorted by collision probability. Filter by risk levels and status.
+                </CardDescription>
               </div>
-              <CardDescription>
-                View all conjunction events sorted by collision probability. Filter by risk level and status.
-              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/maneuvers">
-            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 rounded-full bg-orbit-cyan/10 border border-orbit-cyan/30 text-orbit-cyan group-hover:bg-orbit-cyan/20 transition-colors">
-                  <Zap className="h-4 w-4" strokeWidth={1.5} />
+            <Card className="hover:border-[#f3f3f3] hover:bg-[#080808]/50 transition-all group cursor-pointer h-full flex flex-col justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <h3 className="text-body-primary text-[18px]">Maneuvers</h3>
                 </div>
-                <CardTitle>Maneuver Planner</CardTitle>
+                <CardDescription>
+                  Calculate evasive burns using Clohessy-Wiltshire solver equations and simulate Delta-V vectors.
+                </CardDescription>
               </div>
-              <CardDescription>
-                Calculate CW-based evasive burns. Use the "What-If" sandbox to explore ΔV scenarios in real time.
-              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/ai-briefing">
-            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 rounded-full bg-cleared-green/10 border border-cleared-green/30 text-cleared-green group-hover:bg-cleared-green/20 transition-colors">
-                  <ShieldAlert className="h-4 w-4" strokeWidth={1.5} />
+            <Card className="hover:border-[#f3f3f3] hover:bg-[#080808]/50 transition-all group cursor-pointer h-full flex flex-col justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <h3 className="text-body-primary text-[18px]">AI Situation</h3>
                 </div>
-                <CardTitle>AI Briefing</CardTitle>
+                <CardDescription>
+                  Generate human-readable situational intelligence briefing and reports from telemetry streams.
+                </CardDescription>
               </div>
-              <CardDescription>
-                Generate plain-English situational briefings from structured conjunction and maneuver data.
-              </CardDescription>
             </Card>
           </Link>
 
           <Link href="/map">
-            <Card className="hover:border-orbit-cyan/50 hover:bg-steel/10 transition-all group cursor-pointer h-full">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 rounded-full bg-threat-amber/10 border border-threat-amber/30 text-threat-amber group-hover:bg-threat-amber/20 transition-colors">
-                  <Globe className="h-4 w-4" strokeWidth={1.5} />
+            <Card className="hover:border-[#f3f3f3] hover:bg-[#080808]/50 transition-all group cursor-pointer h-full flex flex-col justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-4">
+                  <h3 className="text-body-primary text-[18px]">3D Live Map</h3>
                 </div>
-                <CardTitle>3D Orbit Map</CardTitle>
+                <CardDescription>
+                  Track SGP4-propagated orbits in ECEF coordinates on an interactive 3D Earth projection stage.
+                </CardDescription>
               </div>
-              <CardDescription>
-                Explore real-time SGP4-propagated orbital tracks on an interactive 3D globe with time-scrub.
-              </CardDescription>
             </Card>
           </Link>
         </div>
@@ -508,16 +475,18 @@ export default function DashboardPage() {
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-iron/20 pb-4">
               <div>
-                <span className="font-data text-[10px] text-orbit-cyan uppercase tracking-[0.182em] block">NORAD ID: {liveSelectedSatellite.noradId}</span>
+                <span className="font-data text-[10px] text-orbit-cyan uppercase tracking-[0.182em] block">
+                  <InfoTooltip term="NORAD ID" explanation="A unique five-digit number assigned by the North American Aerospace Defense Command to catalog every object in space." />: {liveSelectedSatellite.noradId}
+                </span>
                 <h3 className="font-display text-[22px] font-light text-cloud leading-tight mt-1 tracking-tight">
                   {liveSelectedSatellite.name}
                 </h3>
               </div>
               <button
                 onClick={() => setSelectedSatellite(null)}
-                className="p-1 rounded-[8px] border border-iron/30 text-ash hover:text-bone hover:bg-steel/30 transition-all focus:outline-none cursor-pointer"
+                className="px-2.5 py-1 rounded-[8px] border border-[#212121] text-[#9c9c9c] hover:text-[#f3f3f3] hover:bg-[#080808] transition-all focus:outline-none cursor-pointer font-mono text-[11px]"
               >
-                <X className="h-4.5 w-4.5" strokeWidth={1.5} />
+                [X]
               </button>
             </div>
 
@@ -526,15 +495,19 @@ export default function DashboardPage() {
               {/* Telemetry Block */}
               <div className="space-y-3">
                 <h4 className="font-data text-[10px] text-ash uppercase tracking-[0.182em] block">
-                  Orbital Telemetry Parameters
+                  Orbital <InfoTooltip term="Telemetry" explanation="Real-time measurements and operational data transmitted from active satellites." /> Parameters
                 </h4>
                 <div className="grid grid-cols-2 gap-3.5 bg-abyss/40 border border-iron/20 rounded-[12px] p-4">
                   <div>
-                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Altitude</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">
+                      <InfoTooltip term="Altitude" explanation="The height of the satellite above the Earth's surface." />
+                    </span>
                     <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.altitude != null ? `${liveSelectedSatellite.altitude.toFixed(2)} km` : "N/A"}</span>
                   </div>
                   <div>
-                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">Inclination</span>
+                    <span className="font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] block">
+                      <InfoTooltip term="Inclination" explanation="The tilt angle of the satellite's orbit relative to the Earth's equator." />
+                    </span>
                     <span className="font-data text-[13px] text-bone block mt-0.5">{liveSelectedSatellite.inclination != null ? `${liveSelectedSatellite.inclination.toFixed(4)}°` : "N/A"}</span>
                   </div>
                   <div>
@@ -568,7 +541,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="border-t border-iron/20 pt-3">
                     <div className="flex items-center justify-between font-data text-[9px] text-ash/60 uppercase tracking-[0.1em] mb-1.5">
-                      <span>Propellant Reserves</span>
+                      <span><InfoTooltip term="Propellant Reserves" explanation="The remaining fuel available for satellite maneuvers and orbit corrections." /></span>
                       <span className="font-data text-[11px] text-bone">{liveSelectedSatellite.fuelRemainingPct != null ? `${liveSelectedSatellite.fuelRemainingPct.toFixed(1)}%` : "N/A"}</span>
                     </div>
                     <div className="h-2 bg-void border border-iron/30 rounded-full overflow-hidden">
@@ -629,7 +602,6 @@ export default function DashboardPage() {
                   variant="primary"
                   className="w-full text-center flex items-center justify-center space-x-2 bg-pure hover:bg-[#cacaca] text-void font-bold"
                 >
-                  <Globe className="h-4 w-4" />
                   <span>View on 3D Map</span>
                 </Button>
               </Link>

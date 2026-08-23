@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConjunctionEvent, Satellite, ManeuverPlan } from "@/types";
+import { BACKEND_API_URL } from "@/lib/config";
 import { parseCatalog, FALLBACK_ACTIVE_TLES, FALLBACK_DEBRIS_TLES } from "@/lib/celestrak";
 import { propagateTLE, propagateTLEToGeodetic } from "@/lib/sgp4-propagator";
 import fs from "fs";
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
     // 1. Trigger backend solver
     let backendOptions: any[] = [];
     try {
-      const res = await fetch(`http://127.0.0.1:8000/maneuver/${candidateId}/options`, { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/maneuver/${candidateId}/options`, { cache: "no-store" });
       if (res.ok) {
         backendOptions = await res.json();
       }
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Fetch compare data
     let comparison: any = null;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/compare/${candidateId}`, { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/compare/${candidateId}`, { cache: "no-store" });
       if (res.ok) {
         comparison = await res.json();
       }
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
     // 2. Fetch alert info
     let backendAlerts: any[] = [];
     try {
-      const res = await fetch("http://127.0.0.1:8000/triage/alerts", { cache: "no-store" });
+      const res = await fetch(`${BACKEND_API_URL}/triage/alerts`, { cache: "no-store" });
       if (res.ok) {
         backendAlerts = await res.json();
       }

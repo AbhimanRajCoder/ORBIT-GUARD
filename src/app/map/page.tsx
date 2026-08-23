@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Layers, Clock, Keyboard, X, Maximize2, Minimize2 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 import { MapLoadingPlaceholder } from "@/components/dashboard/MapLoadingPlaceholder";
@@ -67,49 +67,35 @@ function MapPageContent() {
         />
       </div>
 
-      {/* ── Glassmorphic HUD Overlays ──────────────────── */}
+      {/* ── Direct Telemetry HUD Overlays (Direct text overlays, no glassmorphic card chrome) ──────────────────── */}
       {showHUD && (
         <>
           {/* Top-Left: Title + Status */}
-          <div className="absolute top-5 left-5 z-30 backdrop-blur-xl bg-void/40 border border-white/8 rounded-2xl px-5 py-3.5 space-y-1 shadow-2xl">
+          <div className="absolute top-5 left-5 z-30 space-y-1">
             <div className="flex items-center space-x-2">
-              <div className="h-2 w-2 rounded-full bg-cleared-green animate-pulse" />
-              <span className="font-mono text-[10px] text-ash/70 uppercase tracking-widest">
+              <div className="h-2 w-2 rounded-full bg-[#98ff38] animate-pulse" />
+              <span className="font-mono text-[10px] text-[#9c9c9c] uppercase tracking-widest">
                 Live Orbital Awareness
               </span>
             </div>
-            <h1
-              className="text-[26px] font-light text-cloud leading-none"
-              style={{ fontFamily: "'Playfair Display', 'DM Serif Display', serif" }}
-            >
-              3D Orbit <em className="italic">Map</em>
+            <h1 className="text-[26px] font-normal text-[#f3f3f3] uppercase tracking-wider font-sans">
+              3D Orbit Map
             </h1>
           </div>
 
           {/* Bottom-Center: Time indicator */}
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 backdrop-blur-xl bg-void/40 border border-white/8 rounded-2xl px-6 py-3 flex items-center space-x-4 shadow-2xl">
-            <Clock className="h-4 w-4 text-orbit-cyan/70" />
-            <span className="font-mono text-[11px] text-cloud" suppressHydrationWarning>
-              {new Date().toISOString().replace("T", " ").slice(0, 19)} UTC
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center space-x-4">
+            <span className="font-mono text-[12px] text-[#f3f3f3]" suppressHydrationWarning>
+              UTC: {new Date().toISOString().replace("T", " ").slice(0, 19)}
             </span>
-            <span className="text-[10px] text-ash/50 font-mono">|</span>
-            <span className="font-mono text-[10px] text-ash/60">
+            <span className="text-[12px] text-[#212121] font-mono">|</span>
+            <span className="font-mono text-[11px] text-[#9c9c9c] uppercase tracking-wider">
               Sim Window: ±72h
             </span>
           </div>
 
           {/* Bottom-Right: Keyboard shortcut hint */}
-          <div className="absolute bottom-5 right-5 z-30 backdrop-blur-xl bg-void/40 border border-white/8 rounded-2xl px-4 py-2.5 flex items-center space-x-3 shadow-2xl">
-            {/* <button
-              onClick={() => setShowShortcuts((v) => !v)}
-              className="flex items-center space-x-1.5 text-ash/60 hover:text-cloud transition-colors cursor-pointer"
-            >
-              <Keyboard className="h-3.5 w-3.5" />
-              <span className="font-mono text-[10px] uppercase tracking-wider">
-                Shortcuts
-              </span>
-            </button>
-            <span className="text-white/10">|</span> */}
+          <div className="absolute bottom-5 right-5 z-30 flex items-center space-x-3">
             <button
               onClick={() => {
                 if (!document.fullscreenElement) {
@@ -118,13 +104,9 @@ function MapPageContent() {
                   document.exitFullscreen?.();
                 }
               }}
-              className="text-ash/60 hover:text-cloud transition-colors cursor-pointer"
+              className="text-[#9c9c9c] hover:text-[#f3f3f3] transition-colors cursor-pointer border border-[#212121] bg-[#080808]/80 px-3 py-1.5 rounded-[8px] font-mono text-[11px] uppercase tracking-wider"
             >
-              {isFullscreen ? (
-                <Minimize2 className="h-3.5 w-3.5" />
-              ) : (
-                <Maximize2 className="h-3.5 w-3.5" />
-              )}
+              {isFullscreen ? "[MINIMIZE]" : "[FULLSCREEN]"}
             </button>
           </div>
         </>
@@ -133,32 +115,31 @@ function MapPageContent() {
       {/* Toggle HUD button (always visible) */}
       <button
         onClick={() => setShowHUD((v) => !v)}
-        className="absolute top-5 right-5 z-30 backdrop-blur-xl bg-void/40 border border-white/8 rounded-xl p-2.5 text-ash/60 hover:text-cloud transition-colors cursor-pointer shadow-lg"
+        className="absolute top-5 right-5 z-30 bg-[#080808]/80 border border-[#212121] rounded-[8px] px-3 py-1.5 text-[#9c9c9c] hover:text-[#f3f3f3] transition-colors cursor-pointer font-mono text-[11px]"
         title="Toggle HUD (H)"
       >
-        <Layers className="h-4 w-4" />
+        [HUD]
       </button>
 
-      {/* ── Keyboard Shortcuts Modal ───────────────────── */}
+      {/* ── Keyboard Shortcuts Modal (Gets standard card border treatment) ───────────────────── */}
       {showShortcuts && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-void/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#101010]/60 backdrop-blur-sm">
           <div
             className="absolute inset-0"
             onClick={() => setShowShortcuts(false)}
           />
-          <div className="relative backdrop-blur-2xl bg-graphite/80 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+          <div className="relative bg-[#080808] border border-[#212121] rounded-[8px] p-8 w-full max-w-sm space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#212121] pb-3">
               <div className="flex items-center space-x-2">
-                <Keyboard className="h-4 w-4 text-orbit-cyan" />
-                <span className="font-mono text-[11px] text-ash uppercase tracking-widest">
+                <span className="text-meta">
                   Keyboard Shortcuts
                 </span>
               </div>
               <button
                 onClick={() => setShowShortcuts(false)}
-                className="p-1 border border-white/10 hover:border-white/20 text-ash hover:text-cloud rounded-lg cursor-pointer transition-all"
+                className="px-2 py-1 border border-[#212121] hover:border-[#f3f3f3] text-[#9c9c9c] hover:text-[#f3f3f3] rounded-[8px] cursor-pointer transition-all font-mono text-[11px]"
               >
-                <X className="h-4 w-4" />
+                [X]
               </button>
             </div>
 
@@ -177,10 +158,10 @@ function MapPageContent() {
                   key={key}
                   className="flex items-center justify-between"
                 >
-                  <span className="font-mono text-[11px] text-ash/80">
+                  <span className="text-[13px] text-[#9c9c9c]">
                     {desc}
                   </span>
-                  <kbd className="px-2 py-0.5 bg-void/60 border border-white/10 rounded text-[10px] font-mono text-cloud min-w-[40px] text-center">
+                  <kbd className="px-2 py-0.5 bg-[#101010] border border-[#212121] rounded text-[11px] font-mono text-[#f3f3f3] min-w-[40px] text-center">
                     {key}
                   </kbd>
                 </div>

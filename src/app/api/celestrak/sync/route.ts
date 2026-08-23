@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { BACKEND_API_URL } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     // 1. Call FastAPI triage refresh endpoint
-    const refreshRes = await fetch("http://127.0.0.1:8000/triage/refresh", {
+    const refreshRes = await fetch(`${BACKEND_API_URL}/triage/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -19,20 +19,18 @@ export function StatusDot({
           className={cn(
             "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
             {
-              "bg-orbit-cyan": status === "monitoring",
-              "bg-threat-amber": status === "caution",
-              "bg-collision-red": status === "critical",
-              "bg-cleared-green": status === "cleared",
+              "bg-[#ffb829]": status === "monitoring" || status === "caution",
+              "bg-[#ff3355]": status === "critical",
+              "bg-[#98ff38]": status === "cleared",
             }
           )}
         />
       )}
       <span
         className={cn("relative inline-flex rounded-full h-2.5 w-2.5", {
-          "bg-orbit-cyan": status === "monitoring",
-          "bg-threat-amber": status === "caution",
-          "bg-collision-red": status === "critical",
-          "bg-cleared-green": status === "cleared",
+          "bg-[#ffb829]": status === "monitoring" || status === "caution",
+          "bg-[#ff3355]": status === "critical",
+          "bg-[#98ff38]": status === "cleared",
         })}
       />
     </span>

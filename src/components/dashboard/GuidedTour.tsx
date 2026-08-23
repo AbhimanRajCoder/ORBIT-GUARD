@@ -320,13 +320,13 @@ export function GuidedTour() {
 
         {isSliderStep && !sandboxCleared && (
           <div className="p-2 border border-purple-500/30 bg-purple-950/20 rounded-[2px] text-[10px] text-purple-300 font-data animate-pulse">
-            🚨 TASK: Adjust the sandbox Delta-V magnitude and Lead-time until Projected Miss Distance reaches at least 5.0 km.
+            TASK: Adjust the sandbox Delta-V magnitude and Lead-time until Projected Miss Distance reaches at least 5.0 km.
           </div>
         )}
 
         {isSliderStep && sandboxCleared && (
           <div className="p-2 border border-cleared-green/30 bg-cleared-green/5 rounded-[2px] text-[10px] text-cleared-green font-data">
-            ✅ TASK COMPLETE: Orbital deflection parameters secure! Click "Approve & Schedule Burn" in the center panel.
+            TASK COMPLETE: Orbital deflection parameters secure! Click "Approve & Schedule Burn" in the center panel.
           </div>
         )}
 

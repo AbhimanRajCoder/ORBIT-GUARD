@@ -11,8 +11,10 @@ MU_EARTH = 398600.4418
 # Safety buffer in km for orbital envelope overlap check
 ENVELOPE_BUFFER_KM = 100.0
 # Coarse distance threshold in km. If coarse screening comes within this,
-# run fine screening.
-COARSE_THRESHOLD_KM = 50.0
+# run fine screening. To prevent high-speed objects from skipping through
+# the sphere in a 10-minute interval (~15km/s max relative velocity * 300s = 4500km),
+# this must be at least 5000.0 km.
+COARSE_THRESHOLD_KM = 5000.0
 
 # Docked/module exclusion list to filter out physical attachments/self-matches
 # Map protected asset ID to a set of NORAD IDs that are part of or docked to it
