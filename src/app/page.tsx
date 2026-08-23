@@ -164,6 +164,39 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* 3D Visualizer Preview Section */}
+      <section className="bg-[#101010] pb-32">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="border border-[#212121] bg-[#080808] rounded-[16px] overflow-hidden p-4 md:p-8 space-y-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                <span className="text-[12px] font-bold text-[#9c9c9c] uppercase tracking-[0.3em] block mb-2">
+                  WebGL Interface
+                </span>
+                <h2 className="font-sans text-[28px] md:text-[36px] font-bold text-white uppercase tracking-tight">
+                  Real-time 3D Orbit Map
+                </h2>
+              </div>
+              <Link
+                href="/map"
+                className="flex items-center justify-center h-11 px-6 bg-white hover:bg-[#cacaca] text-black text-xs font-bold uppercase tracking-widest transition-all duration-300 cursor-pointer"
+              >
+                <span>Explore Orbit Map</span>
+              </Link>
+            </div>
+            
+            <div className="relative group rounded-[8px] overflow-hidden border border-[#212121]">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10 z-10 pointer-events-none" />
+              <img
+                src="/earth-3dview.png"
+                alt="OrbitGuard 3D Visualizer"
+                className="w-full h-auto object-cover transform scale-100 group-hover:scale-[1.02] transition-transform duration-700 ease-out"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 4. Metrics Strip */}
       <section id="metrics" className="bg-[#080808] border-y border-[#212121] py-24">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-px bg-[#212121]">
